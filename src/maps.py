@@ -158,4 +158,9 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
             folium.Circle(you, radius=radius_m, color="#1F3A5F", weight=1, fill=False).add_to(m)
 
     m.get_root().html.add_child(folium.Element(legend_html()))
+    # Re-measure after Streamlit finishes laying out the page (fixes off-center map + gray missing tiles).
+    view_center = list(center or SF_CENTER)
+    m.get_root().script.add_child(folium.Element(
+        f"[150, 600, 1500].forEach(function(t){{ setTimeout(function(){{"
+        f" {m.get_name()}.invalidateSize(); {m.get_name()}.setView({view_center}, {zoom}); }}, t); }});"))
     return m
