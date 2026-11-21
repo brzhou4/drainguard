@@ -2,6 +2,8 @@
 import json
 
 import folium
+from branca.element import MacroElement
+from jinja2 import Template
 from folium.plugins import HeatMap
 
 from src.data import CHECKED_COLOR, OTHER_DRAIN_COLOR, PROCESSED, TIER_COLORS
@@ -23,6 +25,19 @@ TIP_CSS = ("background-color:#FFFFFF;color:#1B1F24;font-family:Poppins,sans-seri
 
 # Flood risk % (share of past storm days with flooding in a ~250 m square). Water blues, darker = higher.
 RISK_BINS = [(0.0001, "#C6E6F5"), (2, "#7CC4E8"), (5, "#3A9AD9"), (10, "#1F66B8"), (20, "#0B3A7E")]
+
+
+class _MapScript(MacroElement):
+    _template = Template("""
+        {% macro script(this, kwargs) %}
+        (function(){
+          var map = {{ this._parent.get_name() }};
+          function lbl(){ map.getContainer().classList.toggle('hide-labels', map.getZoom() < 14); }
+          map.on('zoomend', lbl); lbl();
+          [200, 800].forEach(function(t){ setTimeout(function(){ map.invalidateSize(); lbl(); }, t); });
+        })();
+        {% endmacro %}
+    """)
 
 
 def risk_color(pct):
@@ -198,9 +213,6 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
 
     m.get_root().html.add_child(folium.Element(legend_html()))
     # Only show neighborhood names when zoomed in enough that they don't pile up.
-    name = m.get_name()
-    m.get_root().script.add_child(folium.Element(
-        f"function _labels(){{ {name}.getContainer().classList.toggle('hide-labels', {name}.getZoom() < 14); }}"
-        f"{name}.on('zoomend', _labels); _labels();"
-        f"setTimeout(function(){{ {name}.invalidateSize(); _labels(); }}, 400);"))
+    # (Attached to the map itself so streamlit-folium includes it.)
+    _MapScript().add_to(m)
     return m
