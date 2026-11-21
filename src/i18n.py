@@ -98,9 +98,6 @@ STRINGS = {
     "h311_done": {"en": "I sent it to 311", "es": "Ya lo envié al 311", "zh": "我已报告给 311"},
 
     # Ported volunteer features (anonymous volunteers, storm lock, walking route, reports)
-    "storm_title": {"en": "Storm now: please stay inside.", "es": "Hay tormenta: por favor quédese adentro.", "zh": "正在下暴雨：请留在室内。"},
-    "storm_body": {"en": "Drain checks are paused until the storm passes. We'll send you an alert when it's safe to go out.", "es": "Las revisiones están en pausa hasta que pase la tormenta. Le avisaremos cuando sea seguro salir.", "zh": "暴雨过去之前暂停检查。安全后我们会提醒您。"},
-    "watch_body": {"en": "Rain is coming. If you go out, go in daylight and finish before it starts. Stay on the sidewalk.", "es": "Viene lluvia. Si sale, hágalo de día y termine antes de que empiece. Quédese en la banqueta.", "zh": "即将下雨。如果出门，请在白天并在下雨前完成。请留在人行道上。"},
     "tab_back": {"en": "I already signed up", "es": "Ya me inscribí", "zh": "我已经注册过"},
     "paste_link": {"en": "Paste your private link (or code)", "es": "Pegue su enlace privado (o código)", "zh": "粘贴您的专属链接（或代码）"},
     "open_link": {"en": "Continue", "es": "Continuar", "zh": "继续"},
