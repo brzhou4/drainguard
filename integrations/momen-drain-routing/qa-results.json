@@ -1,0 +1,117 @@
+{
+  "date_utc": "2026-11-21",
+  "passed": 10,
+  "total": 10,
+  "minimum_delay_between_requests_ms": 1500,
+  "automatic_retries": 0,
+  "temporary_rows_deleted": 6,
+  "rows_remaining": 0,
+  "note": "Earlier unpaced requests hit the project-wide one-per-second mutation limit; the functional suite was run within that limit.",
+  "cases": [
+    {
+      "n": 1,
+      "name": "Urgency outranks proximity; nearer drain wins a tie",
+      "expected": "FOUND",
+      "http": 200,
+      "request_id": "773b5c24-eaa9-4d32-b0e9-86c6f74007e7",
+      "actual": "FOUND",
+      "drain_id": 2,
+      "straight_line_distance_meters": 100.07543398026468,
+      "walking_link_checked": true,
+      "passed": true
+    },
+    {
+      "n": 2,
+      "name": "A smaller radius selects the closer eligible drain",
+      "expected": "FOUND",
+      "http": 200,
+      "request_id": "d79f0e5a-4568-451b-8dab-81cb30c860c2",
+      "actual": "FOUND",
+      "drain_id": 1,
+      "straight_line_distance_meters": 44.47797065771984,
+      "walking_link_checked": true,
+      "passed": true
+    },
+    {
+      "n": 3,
+      "name": "An inactive drain inside the radius is excluded",
+      "expected": "NO_MATCH",
+      "http": 200,
+      "request_id": "728331f5-6c45-43dd-8f80-697cbeb0d0d6",
+      "actual": "NO_MATCH",
+      "passed": true
+    },
+    {
+      "n": 4,
+      "name": "A larger radius includes the most urgent drain",
+      "expected": "FOUND",
+      "http": 200,
+      "request_id": "47872c39-6ab6-4705-bb03-fdad1df45a1d",
+      "actual": "FOUND",
+      "drain_id": 5,
+      "straight_line_distance_meters": 1111.9492664457612,
+      "walking_link_checked": true,
+      "passed": true
+    },
+    {
+      "n": 5,
+      "name": "Moving the origin changes the distance tie-break",
+      "expected": "FOUND",
+      "http": 200,
+      "request_id": "e4395df8-69d5-4ef2-978a-bdfcf830bb64",
+      "actual": "FOUND",
+      "drain_id": 3,
+      "straight_line_distance_meters": 33.358477993289874,
+      "walking_link_checked": true,
+      "passed": true
+    },
+    {
+      "n": 6,
+      "name": "Zero radius accepts an exact match",
+      "expected": "FOUND",
+      "http": 200,
+      "request_id": "4bf6972e-87cd-44cd-a1b1-7fc715b58cf3",
+      "actual": "FOUND",
+      "drain_id": 6,
+      "straight_line_distance_meters": 0,
+      "walking_link_checked": true,
+      "passed": true
+    },
+    {
+      "n": 7,
+      "name": "Zero radius rejects a non-exact match",
+      "expected": "NO_MATCH",
+      "http": 200,
+      "request_id": "7ab9528b-751d-41e8-b12c-5083d8d07976",
+      "actual": "NO_MATCH",
+      "passed": true
+    },
+    {
+      "n": 8,
+      "name": "Out-of-range latitude is rejected",
+      "expected": "INVALID_INPUT",
+      "http": 200,
+      "request_id": "105b0dc8-0cc0-47f3-8d9a-0abf5ba27993",
+      "actual": "INVALID_INPUT",
+      "passed": true
+    },
+    {
+      "n": 9,
+      "name": "Negative distance is rejected",
+      "expected": "INVALID_INPUT",
+      "http": 200,
+      "request_id": "0c83e2a0-e537-481f-beed-543259743f74",
+      "actual": "INVALID_INPUT",
+      "passed": true
+    },
+    {
+      "n": 10,
+      "name": "Empty register returns no match after fixture cleanup",
+      "expected": "NO_MATCH",
+      "http": 200,
+      "request_id": "ad4d664f-02c8-441c-a5b3-4648da42e214",
+      "actual": "NO_MATCH",
+      "passed": true
+    }
+  ]
+}
