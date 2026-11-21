@@ -5,7 +5,8 @@ import secrets
 import streamlit as st
 from streamlit_folium import st_folium
 
-from src.data import drains_with_status, load_volunteers, log_status, save_volunteer
+from src.data import (drains_with_status, load_volunteers, log_status, save_volunteer, sf311_description,
+                      sf311_report_url)
 from src.geo import geocode_sf, in_sf, nearest_drains
 from src.i18n import LANGS, t
 from src.maps import drain_map
@@ -156,13 +157,28 @@ for _, r in near.iterrows():
             st.rerun()
         if b2.button(T("btn_blocked"), key=f"b-{r['asset_id']}", use_container_width=True):
             log_status(r["asset_id"], "Blocked - reported to 311", me["name"])
-            st.session_state["report_311"] = r["asset_id"]
+            st.session_state["report_311"] = {k: r[k] for k in ("asset_id", "lat", "lon", "neighborhood")}
             st.rerun()
         if b3.button(T("btn_cant"), key=f"n-{r['asset_id']}", use_container_width=True):
             log_status(r["asset_id"], "Couldn't reach", me["name"])
             st.toast(T("logged_retry"))
             st.rerun()
 
-if st.session_state.get("report_311"):
-    st.success(T("blocked_msg", id=st.session_state["report_311"]))
-    st.link_button(T("report_311"), "https://sf311.org", type="primary", use_container_width=True)
+# ---------- 311 handoff after a "Blocked" report ----------
+# The city form can't be shown inside DrainGuard (SF 311 blocks embedding), so we open it already
+# filled in: sewer category picked and the description written. The volunteer pins the spot and submits.
+pending = st.session_state.get("report_311")
+if isinstance(pending, dict):
+    with st.container(border=True):
+        st.success(T("blocked_msg", id=pending["asset_id"]), icon=":material/report:")
+        st.markdown(T("h311_steps", lat=round(float(pending["lat"]), 6), lon=round(float(pending["lon"]), 6)))
+        st.link_button(T("report_311"), sf311_report_url(pending), type="primary", icon=":material/open_in_new:",
+                       use_container_width=True)
+        st.caption(T("h311_copy"))
+        st.code(sf311_description(pending), language=None, wrap_lines=True)
+        if st.button(T("h311_done"), icon=":material/check:", use_container_width=True, key="h311_done"):
+            st.session_state.pop("report_311", None)
+            st.toast(T("thanks"), icon=":material/check_circle:")
+            st.rerun()
+elif pending:  # left over from an older session that stored only the ID
+    st.session_state.pop("report_311", None)

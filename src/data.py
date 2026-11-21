@@ -21,6 +21,30 @@ CHECKED_COLOR = "#2E9E5B"   # green = checked
 OTHER_DRAIN_COLOR = "#9AA0A6"  # gray = every other mapped drain
 STATUSES = ["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"]
 
+# SF 311 "Flooding, sewer and water leak issues" form. The city site can't be embedded (it blocks framing),
+# so we open it in a new tab with the category picked and the description already written.
+SF311_SEWER_FORM = "https://mobile311.sfgov.org/tickets/new"
+
+
+def sf311_description(drain):
+    """The text a volunteer sends to the city for a blocked drain. Kept in English for city staff."""
+    lat, lon = round(float(drain["lat"]), 6), round(float(drain["lon"]), 6)
+    hood = drain.get("neighborhood")
+    where = f", {hood}" if isinstance(hood, str) and hood.strip() else ""
+    return (f"Blocked storm drain (catch basin) at {lat}, {lon}{where}. "
+            f"Map: https://www.google.com/maps?q={lat},{lon} . "
+            f"Reported by a DrainGuard volunteer, drain ID {drain['asset_id']}. "
+            "This drain is on the flood-risk list; please clear it before the next storm.")
+
+
+def sf311_report_url(drain):
+    """Link to the SF 311 sewer form with the category set and the description filled in."""
+    from urllib.parse import urlencode
+    return SF311_SEWER_FORM + "?" + urlencode({
+        "submission[ticket_type_code]": "input:Sewer",
+        "submission[details][spot:description]": sf311_description(drain),
+    })
+
 # Rough neighborhood centers, used when a volunteer picks a neighborhood instead of clicking the map.
 NEIGHBORHOOD_CENTERS = {
     "Mission": (37.7625, -122.4155),

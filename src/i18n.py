@@ -78,10 +78,26 @@ STRINGS = {
     "thanks": {"en": "Thanks! Logged.", "es": "¡Gracias! Registrado.", "zh": "谢谢！已记录。"},
     "logged_retry": {"en": "Logged. Someone else will try.", "es": "Registrado. Otra persona lo intentará.",
                      "zh": "已记录。其他人会再试。"},
-    "blocked_msg": {"en": "Drain {id} marked blocked. Please also report it to the city:",
-                    "es": "Coladera {id} marcada como tapada. Por favor repórtela también a la ciudad:",
-                    "zh": "排水口 {id} 已标记为堵塞。请同时报告给市政府："},
-    "report_311": {"en": "Report to SF 311", "es": "Reportar al SF 311", "zh": "报告给 SF 311"},
+    "blocked_msg": {"en": "Drain {id} marked blocked. Now send it to the city, it takes about a minute.",
+                    "es": "Coladera {id} marcada como tapada. Ahora envíela a la ciudad, toma como un minuto.",
+                    "zh": "排水口 {id} 已标记为堵塞。现在报告给市政府，大约需要一分钟。"},
+    "report_311": {"en": "Open the SF 311 sewer report", "es": "Abrir el reporte de alcantarillado del SF 311",
+                   "zh": "打开 SF 311 下水道报告"},
+    "h311_steps": {
+        "en": "1. Tap the button. The **sewer category and description are already filled in.**\n"
+              "2. Drop the pin on the drain: **{lat}, {lon}**.\n"
+              "3. Add a photo only if it's safe, then submit.",
+        "es": "1. Toque el botón. **La categoría de alcantarillado y la descripción ya están llenas.**\n"
+              "2. Ponga el punto en la coladera: **{lat}, {lon}**.\n"
+              "3. Agregue una foto solo si es seguro y envíe.",
+        "zh": "1. 点击按钮。**下水道类别和描述已经填好。**\n"
+              "2. 把图钉放在排水口上：**{lat}, {lon}**。\n"
+              "3. 安全的话再加一张照片，然后提交。",
+    },
+    "h311_copy": {"en": "If the description is missing on the city form, copy it from here (in English for city staff):",
+                  "es": "Si la descripción no aparece en el formulario de la ciudad, cópiela de aquí (en inglés para el personal de la ciudad):",
+                  "zh": "如果市政表格里没有描述，请从这里复制（英文，方便市政人员阅读）："},
+    "h311_done": {"en": "I sent it to 311", "es": "Ya lo envié al 311", "zh": "我已报告给 311"},
 }
 
 
