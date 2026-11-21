@@ -11,6 +11,11 @@ SF_CENTER = (37.758, -122.44)
 FONT_LINK = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
              '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" '
              'rel="stylesheet">')
+# Remove Leaflet's default white tooltip box + arrow so only our dark card shows.
+TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;border:none!important;"
+                 "box-shadow:none!important;padding:0!important;}"
+                 ".leaflet-tooltip:before,.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,"
+                 ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}</style>")
 TIP_CSS = ("background-color:#17171C;color:#F5F5F7;font-family:Poppins,sans-serif;font-size:13px;"
            "border:1px solid #3A3A44;border-radius:8px;padding:8px 11px;box-shadow:0 6px 18px rgba(0,0,0,.35);")
 
@@ -63,7 +68,7 @@ def legend_html():
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
               radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None):
     m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None, prefer_canvas=True, max_zoom=19)
-    m.get_root().header.add_child(folium.Element(FONT_LINK))
+    m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
     b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
     folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
                      max_native_zoom=b["max_native_zoom"]).add_to(m)
