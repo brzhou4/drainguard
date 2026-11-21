@@ -32,6 +32,17 @@ class _MapScript(MacroElement):
         {% macro script(this, kwargs) %}
         (function(){
           var map = {{ this._parent.get_name() }};
+          if (!document.getElementById('dg-style')) {
+            var st = document.createElement('style'); st.id = 'dg-style';
+            st.innerHTML = ".leaflet-tooltip{background:transparent!important;border:none!important;box-shadow:none!important;padding:0!important;}"
+              + ".leaflet-tooltip:before{display:none!important;}"
+              + ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}"
+              + ".hide-labels .nhood-label{display:none!important;}";
+            document.head.appendChild(st);
+            var f = document.createElement('link'); f.rel = 'stylesheet';
+            f.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap';
+            document.head.appendChild(f);
+          }
           function lbl(){ map.getContainer().classList.toggle('hide-labels', map.getZoom() < 14); }
           map.on('zoomend', lbl); lbl();
           [200, 800].forEach(function(t){ setTimeout(function(){ map.invalidateSize(); lbl(); }, t); });
