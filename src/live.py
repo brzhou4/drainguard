@@ -155,15 +155,22 @@ def rank_drains(reports, inlets, seed=0):
         test_tree = cKDTree(to_xy(test["lat"], test["lon"]))
         rng = np.random.default_rng(seed)
         by_count = np.argsort(-total, kind="stable")
+        def hit_rate(idx):  # share of chosen drains with >= 1 Nov 18 incident within RADIUS_M
+            if len(idx) == 0:
+                return float("nan")
+            return float(np.mean([len(l) > 0 for l in test_tree.query_ball_point(inlet_xy[idx], r=RADIUS_M)]))
+
         for k in (25, 50, 100, 250):
-            rand = [recall_at_k(inlet_xy, test_tree, len(test), rng.choice(len(inlets), k, replace=False))
-                    for _ in range(100)]
+            rand_idx = [rng.choice(len(inlets), k, replace=False) for _ in range(100)]
+            rand = [recall_at_k(inlet_xy, test_tree, len(test), i) for i in rand_idx]
             rows.append({
                 "K drains": k,
                 "DrainGuard (greedy coverage)": recall_at_k(inlet_xy, test_tree, len(test), np.array(picks[:k])),
                 "Most past reports (no greedy)": recall_at_k(inlet_xy, test_tree, len(test), by_count[:k]),
                 "Random drains (mean of 100)": float(np.mean(rand)),
                 "Random 95th percentile": float(np.percentile(rand, 95)),
+                "Hit rate: DrainGuard drains at a Nov 18 flood spot": hit_rate(np.array(picks[:k])),
+                "Hit rate: random drains": float(np.mean([hit_rate(i) for i in rand_idx[:20]])),
             })
     results = pd.DataFrame(rows)
     summary = {
@@ -175,9 +182,53 @@ def rank_drains(reports, inlets, seed=0):
     return ranked, results, summary, test
 
 
+CELL_M = 250
+
+
+def flood_risk_cells(reports, inlets, ranked):
+    """~250 m squares (only where mapped drains exist). Flood risk % = share of past storm days
+    (before Nov 18) with at least one flood incident in the square."""
+    inc, storm_days = to_incidents(reports)
+    train = inc[inc["date"] < TEST_START]
+    n_days = max(1, sum(1 for d in storm_days if d < TEST_START))
+    cos = np.cos(np.radians(LAT0))
+
+    def cell_ids(lat, lon):
+        xy = to_xy(lat, lon)
+        return np.floor(xy[:, 0] / CELL_M).astype(int), np.floor(xy[:, 1] / CELL_M).astype(int)
+
+    dx, dy = cell_ids(inlets["lat"], inlets["lon"])
+    cells = pd.DataFrame({"cx": dx, "cy": dy, "neighborhood": inlets["neighborhood"].to_numpy()})
+    cells = (cells.groupby(["cx", "cy"])
+             .agg(drains=("neighborhood", "size"),
+                  neighborhood=("neighborhood", lambda s: s.mode().iloc[0] if len(s.mode()) else "Unknown"))
+             .reset_index())
+    tx, ty = cell_ids(train["lat"], train["lon"])
+    t = pd.DataFrame({"cx": tx, "cy": ty, "date": train["date"].to_numpy()})
+    days = t.groupby(["cx", "cy"])["date"].nunique().rename("flood_days").reset_index()
+    incs = t.groupby(["cx", "cy"]).size().rename("incidents").reset_index()
+    cells = cells.merge(days, how="left").merge(incs, how="left").fillna({"flood_days": 0, "incidents": 0})
+    if len(ranked):
+        rx, ry = cell_ids(ranked["lat"], ranked["lon"])
+        rk = pd.DataFrame({"cx": rx, "cy": ry}).groupby(["cx", "cy"]).size().rename("ranked").reset_index()
+        cells = cells.merge(rk, how="left")
+    cells["ranked"] = cells.get("ranked", 0)
+    cells = cells.fillna({"ranked": 0})
+    cells["pct"] = (100 * cells["flood_days"] / n_days).round(1)
+    cells["city_avg"] = round(float(cells["pct"].mean()), 1)
+    # corners back to lat/lon
+    cells["lon0"] = cells["cx"] * CELL_M / (111320 * cos)
+    cells["lon1"] = (cells["cx"] + 1) * CELL_M / (111320 * cos)
+    cells["lat0"] = cells["cy"] * CELL_M / 110540
+    cells["lat1"] = (cells["cy"] + 1) * CELL_M / 110540
+    cells["n_days"] = n_days
+    return cells
+
+
 def run():
-    """Download everything and rank. Returns (ranked, all_inlets, results, summary, test_incidents)."""
+    """Download everything and rank. Returns (ranked, all_inlets, results, summary, test_incidents, cells)."""
     reports = fetch_reports()
     inlets = fetch_inlets()
     ranked, results, summary, test = rank_drains(reports, inlets)
-    return ranked, inlets[["asset_id", "lat", "lon"]], results, summary, test[["lat", "lon"]]
+    cells = flood_risk_cells(reports, inlets, ranked)
+    return ranked, inlets[["asset_id", "lat", "lon"]], results, summary, test[["lat", "lon"]], cells

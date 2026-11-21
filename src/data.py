@@ -91,7 +91,7 @@ def load_all():
         if "is_fake" in d.columns and not d["is_fake"].astype(str).str.lower().eq("true").all():
             return d.sort_values("rank").reset_index(drop=True), empty, "file"
     try:
-        ranked, inlets, results, summary, test = _live_run()
+        ranked, inlets, results, summary, test, _cells = _live_run()
         _write_live_outputs(results, summary, test)
         return ranked, inlets, "live"
     except Exception as e:  # network down etc.: fall back to the fake starter data
@@ -117,6 +117,14 @@ def all_drains():
 
 def data_source():
     return load_all()[2]
+
+
+def flood_cells():
+    """Flood-risk % squares from the live run (empty if live data is unavailable)."""
+    try:
+        return _live_run()[5]
+    except Exception:
+        return pd.DataFrame()
 
 
 def load_status():

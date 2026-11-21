@@ -6,6 +6,18 @@ import streamlit as st
 
 st.set_page_config(page_title="DrainGuard", page_icon=":material/water_drop:", layout="wide")
 
+st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+html, body, p, li, label, input, textarea, button, h1, h2, h3, h4, h5, h6,
+[data-testid="stMarkdownContainer"] *:not([data-testid="stIconMaterial"]),
+[data-testid="stMetricValue"], [data-testid="stMetricLabel"] *, [data-testid="stCaptionContainer"] *,
+[data-testid="stSidebarNavLink"] span:not([data-testid="stIconMaterial"]),
+[data-testid="stDataFrame"], [data-baseweb="select"] * {
+  font-family: 'Poppins', sans-serif !important;
+}
+h1 { font-weight: 700 !important; letter-spacing: -0.01em; }
+</style>""", unsafe_allow_html=True)
+
 pages = [
     st.Page("views/command_center.py", title="Command Center", icon=":material/dashboard:", default=True),
     st.Page("views/volunteer.py", title="Volunteer", icon=":material/volunteer_activism:"),
