@@ -1,4 +1,4 @@
-streamlit>=1.40
+streamlit>=1.48  # horizontal containers (language button)
 streamlit-folium>=0.22
 folium
 pandas
