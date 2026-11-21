@@ -12,7 +12,6 @@ from src.geo import (geocode_sf, in_sf, maps_url, nearest_drains, street_view_ur
                      walking_route_url)
 from src.i18n import LANGS, condition_label, t
 from src.maps import drain_map
-from src.weather import current_storm
 
 ADOPT_A_DRAIN_URL = "https://adoptadrain.sfwater.org/"
 MAX_PHOTO_MB = 8
@@ -63,16 +62,8 @@ if token and me is None:
     st.session_state.pop("token", None)
     token = None
 
-# ---------- Storm check: never send people out in a storm ----------
-storm = current_storm()
 st.warning(T("safety_banner"), icon=":material/warning:")
 st.title(T("title"))
-
-if storm["level"] == "storm":
-    st.error(f"**{T('storm_title')}**  \n{storm['headline']}  \n{T('storm_body')}", icon=":material/thunderstorm:")
-    st.stop()
-if storm["level"] == "watch":
-    st.info(f"**{storm['headline']}**  \n{T('watch_body')}", icon=":material/rainy:")
 
 # ---------- Sign up / sign back in ----------
 if me is None:

@@ -37,7 +37,6 @@ A 3-page Streamlit app:
 - **Command Center:** urgency list, map, and a storm alert sent through ntfy.sh.
 - **Volunteer:** nearby drains to look at and report. Look and report only, never during a storm.
   - Anonymous: no names. Each volunteer gets a private sign-in link (`?v=token`).
-  - Storm lock: when the forecast says storm, checks pause and the Command Center can't send volunteers out.
   - Start spot by location, address/cross streets, or map; age question and safety pledge.
   - Walking route in nearest-next order, numbered map, Google Maps walking link, Street View.
   - "I'm heading there" hides that drain from everyone else (lists and maps, Command Center too) for the walk time + 20 minutes, or until it's reported.

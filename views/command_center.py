@@ -19,7 +19,7 @@ APP_URL = setting("APP_URL", "")
 drains = drains_with_status()
 
 # ---------- Storm banner (the first thing anyone needs to know) ----------
-storm = current_storm()  # same storm level (and demo override) as the Volunteer page
+storm = current_storm()  # NWS forecast for the banner (STORM_OVERRIDE can force it for demos)
 STYLE = {  # background, text, label
     "storm": ("#4A1D7A", "#FFFFFF", "STORM ALERT"),
     "watch": ("#B3261E", "#FFFFFF", "RAIN WATCH"),
@@ -157,10 +157,8 @@ with list_col:
     st.download_button("Download crew route sheet (CSV)", view.to_csv(index=False).encode(),
                        "drainguard_route_sheet.csv", "text/csv", use_container_width=True)
 
-    storm_now = storm["level"] == "storm"
-    if st.button("Notify nearby volunteers", use_container_width=True, disabled=storm_now,
-                 help="Paused during a storm: volunteers should stay inside." if storm_now else
-                 "Push each volunteer the 3 closest drains that still need a visit"):
+    if st.button("Notify nearby volunteers", use_container_width=True,
+                 help="Push each volunteer the 3 closest drains that still need a visit"):
         vols = load_volunteers()
         sent = 0
         for _, v in vols.iterrows():
@@ -174,8 +172,6 @@ with list_col:
             link = f"{APP_URL.rstrip('/')}/volunteer?v={v['token']}" if APP_URL else None
             sent += send_push(v["topic"], "DrainGuard: drains near you", body, tags="droplet", click_url=link)
         st.toast(f"Sent {sent} volunteer alert(s)." if len(vols) else "No volunteers yet. Sign up on the Volunteer page.")
-    if storm_now:
-        st.caption("Volunteer alerts are paused while the storm is on. Crew alerts still work.")
 
     # ---------- Check rounds: old checks stop counting ----------
     rs = round_start()
