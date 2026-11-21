@@ -9,18 +9,45 @@ from src.data import (RESULTS_JSON, TIERS, all_drains, data_source, drains_with_
                       now_str, setting)
 from src.geo import nearest_drains
 from src.maps import BASEMAPS, drain_map
+from src.weather import get_forecast, storm_status
 
 CITY_TOPIC = setting("CITY_TOPIC", "drainguard-city-demo")
 APP_URL = setting("APP_URL", "")
 
 drains = drains_with_status()
 
-# ---------- Status bar ----------
+@st.cache_data(ttl=1800, show_spinner=False)
+def _forecast():
+    return get_forecast()
+
+
+# ---------- Storm banner (the first thing anyone needs to know) ----------
+storm = storm_status(_forecast())
+STYLE = {  # background, text, label
+    "storm": ("#4A1D7A", "#FFFFFF", "STORM ALERT"),
+    "watch": ("#B3261E", "#FFFFFF", "RAIN WATCH"),
+    "clear": ("#1E6B3A", "#FFFFFF", "ALL CLEAR"),
+    "unknown": ("#5F6B7A", "#FFFFFF", "FORECAST"),
+}[storm["level"]]
+unchecked = int(((drains["tier"] == "Urgent") & (drains["status"] == "Not checked")).sum())
+action = (f"{unchecked} Urgent drains still need checking before the rain." if storm["level"] in ("storm", "watch")
+          else f"{unchecked} Urgent drains not yet checked.")
+st.markdown(
+    f"""<div style="background:{STYLE[0]};color:{STYLE[1]};border-radius:12px;padding:20px 24px;margin:4px 0 16px">
+  <div style="font-size:14px;font-weight:700;letter-spacing:.12em;opacity:.85">{STYLE[2]} · SAN FRANCISCO</div>
+  <div style="font-size:34px;font-weight:800;line-height:1.15;margin:6px 0">{storm['headline']}</div>
+  <div style="font-size:20px;font-weight:600;margin-bottom:6px">{action}</div>
+  <div style="font-size:14px;opacity:.85">{storm['detail']}<br>Source: National Weather Service forecast,
+  updated every 30 min.</div>
+</div>""",
+    unsafe_allow_html=True,
+)
+
+# ---------- Title row ----------
 top_l, top_r = st.columns([3, 1])
 with top_l:
     st.title("DrainGuard Command Center")
-    st.caption(f"Storm expected this weekend · Data loaded {now_str()} · "
-               "Drains ranked by how likely they are to need checking")
+    st.caption(f"Data loaded {now_str()} · Drains ranked by how likely they are to need checking")
 with top_r:
     st.write("")
     send = st.button("Send storm alert", type="primary", use_container_width=True,
@@ -44,7 +71,7 @@ if send:
         st.toast("No unchecked Urgent drains to send.")
     else:
         body = "\n".join(f"#{int(r['rank'])} {r['neighborhood']} ({r['asset_id']})" for _, r in top10.iterrows())
-        ok = send_push(CITY_TOPIC, "DrainGuard: storm alert", "Check these drains first:\n" + body,
+        ok = send_push(CITY_TOPIC, "DrainGuard: storm alert", f"{storm['headline']}\nCheck these drains first:\n" + body,
                        click_url=APP_URL or None)
         st.toast("Storm alert sent." if ok else "Alert failed. Check the internet connection.",
                  icon=":material/check_circle:" if ok else ":material/error:")
