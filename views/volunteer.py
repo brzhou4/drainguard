@@ -1,17 +1,17 @@
 """Volunteer: the neighbor's view (phone, single column).
 
 Set where you are (share location, type an address, or tap the map), see the closest priority drain on a
-map with walking directions, and report sewer problems or flooding to SF 311. No sign-up.
+map with walking directions, and report sewer problems or flooding on the embedded SFPUC sewer form. No sign-up.
 """
 import streamlit as st
 from streamlit_folium import st_folium
 
-from src.data import DONE_STATUSES, SF311_SEWER_FORM, drains_with_status
+from src.data import DONE_STATUSES, drains_with_status
 from src.geo import geocode_sf, in_sf, nearest_drains, walking_order, walking_route_url
 from src.i18n import LANGS, t
 from src.maps import drain_map
 
-SF311_SEWER_URL = SF311_SEWER_FORM + "?submission%5Bticket_type_code%5D=input%3ASewer"
+SFPUC_SEWER_FORM_URL = "https://sanfrancisco.form.us.empro.verintcloudservices.com/form/auto/puc_sewer"
 
 # ---------- Language: one small button in the top-right corner; each tap moves to the next language ----------
 _ORDER = list(LANGS)
@@ -119,5 +119,9 @@ if last:
 
 # ---------- Report to the city ----------
 st.divider()
-st.link_button(T("report_311_general"), SF311_SEWER_URL, icon=":material/open_in_new:", use_container_width=True)
+st.subheader(T("sewer_form_title"))
+st.write(T("sewer_form_intro"))
+st.markdown(T("sewer_form_tips"))
+st.iframe(SFPUC_SEWER_FORM_URL, height=900)
+st.link_button(T("sewer_form_open"), SFPUC_SEWER_FORM_URL, icon=":material/open_in_new:", use_container_width=True)
 st.caption(T("report_311_help"))
