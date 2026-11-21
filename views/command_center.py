@@ -5,7 +5,7 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from src.alerts import send_push
-from src.data import (RESULTS_JSON, TIERS, drains_with_status, load_volunteers, now_str, setting)
+from src.data import (RESULTS_JSON, TIERS, drains_with_status, load_volunteers, log_status, now_str, setting)
 from src.geo import nearest_drains
 from src.maps import drain_map
 
@@ -66,7 +66,7 @@ with list_col:
     hoods = sorted(drains["neighborhood"].dropna().unique())
     hood_pick = f2.multiselect("Neighborhood", hoods)
     status_pick = st.multiselect("Status", ["Not checked", "Checked - clear", "Blocked - reported to 311",
-                                            "Couldn't reach"], default=["Not checked", "Blocked - reported to 311"])
+                                            "Couldn't reach"], default=["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"])
 
     view = drains[drains["tier"].isin(tier_pick or TIERS)]
     if hood_pick:
@@ -74,12 +74,16 @@ with list_col:
     if status_pick:
         view = view[view["status"].isin(status_pick)]
 
+    view = view.reset_index(drop=True)
+    selected = None
     if view.empty:
         st.write("No drains match these filters. Clear a filter to see more.")
     else:
-        st.dataframe(
+        st.caption("Click a row to zoom the map to that drain and mark it checked.")
+        event = st.dataframe(
             view[["rank", "tier", "neighborhood", "reason", "status", "checked_at"]],
-            hide_index=True, use_container_width=True, height=380,
+            hide_index=True, use_container_width=True, height=330,
+            on_select="rerun", selection_mode="single-row", key="drain_table",
             column_config={
                 "rank": st.column_config.NumberColumn("#", width="small"),
                 "tier": st.column_config.TextColumn("Tier", width="small"),
@@ -87,6 +91,29 @@ with list_col:
                 "checked_at": "Last checked",
             },
         )
+        rows = event.selection.rows if event and event.selection else []
+        if rows and rows[0] < len(view):
+            selected = view.iloc[rows[0]]
+
+    # ---------- Selected drain: details + check buttons ----------
+    if selected is not None:
+        with st.container(border=True):
+            st.markdown(f"**#{int(selected['rank'])} {selected['tier'].upper()} · {selected['neighborhood']}**  \n"
+                        f"`{selected['asset_id']}` · Status: **{selected['status']}**")
+            st.write(selected["reason"])
+            st.link_button("Open in Maps", f"https://www.google.com/maps?q={selected['lat']},{selected['lon']}",
+                           use_container_width=True)
+            b1, b2, b3 = st.columns(3)
+            for col, label, status in [(b1, "✓ Clear", "Checked - clear"),
+                                       (b2, "Blocked", "Blocked - reported to 311"),
+                                       (b3, "Can't reach", "Couldn't reach")]:
+                if col.button(label, key=f"cc-{status}-{selected['asset_id']}", use_container_width=True):
+                    log_status(selected["asset_id"], status, "City crew")
+                    st.toast(f"Marked {selected['asset_id']} as {status}.", icon=":material/check_circle:")
+                    st.rerun()
+            if st.button("Reset to Not checked", key=f"cc-reset-{selected['asset_id']}", use_container_width=True):
+                log_status(selected["asset_id"], "Not checked", "City crew")
+                st.rerun()
     st.download_button("Download crew route sheet (CSV)", view.to_csv(index=False).encode(),
                        "drainguard_route_sheet.csv", "text/csv", use_container_width=True)
 
@@ -112,5 +139,12 @@ with map_col:
     show_nov18 = c3.toggle("Nov 18 reports", value=False)
     if st.button("Refresh map", icon=":material/refresh:"):
         st.rerun()
-    st_folium(drain_map(view if len(view) else drains, show_heat, show_zone, show_nov18),
-              height=560, use_container_width=True, returned_objects=[])
+    if selected is not None:
+        center, zoom, focus = (selected["lat"], selected["lon"]), 17, selected["asset_id"]
+        st.caption(f"Zoomed to drain #{int(selected['rank'])} ({selected['neighborhood']}). "
+                   "Deselect the row to see the whole city.")
+    else:
+        center, zoom, focus = None, 12, None
+    st_folium(drain_map(view if len(view) else drains, show_heat, show_zone, show_nov18,
+                        center=center, zoom=zoom, focus=focus),
+              key=f"map-{focus}", height=560, use_container_width=True, returned_objects=[])

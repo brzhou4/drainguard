@@ -22,7 +22,8 @@ def legend_html():
             f'{items}</div>')
 
 
-def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None, radius_m=None):
+def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
+              radius_m=None, focus=None):
     m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles="OpenStreetMap")
 
     if show_zone:
@@ -54,6 +55,13 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
             popup=folium.Popup(f"<b>#{int(r['rank'])} {r['tier']}</b><br>{r['asset_id']}<br>"
                                f"{r['reason']}<br>Status: {r.get('status', 'Not checked')}", max_width=260),
         ).add_to(m)
+
+    if focus is not None:
+        hit = drains[drains["asset_id"] == focus]
+        if len(hit):
+            r = hit.iloc[0]
+            folium.Marker((r["lat"], r["lon"]), tooltip=f"Selected: #{int(r['rank'])}",
+                          icon=folium.Icon(color="red", icon="star")).add_to(m)
 
     if you:
         folium.Marker(you, tooltip="You", icon=folium.Icon(color="blue", icon="user")).add_to(m)
