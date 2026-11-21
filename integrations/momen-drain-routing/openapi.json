@@ -1,0 +1,132 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Drain routing webhook",
+    "version": "1.0.0",
+    "description": "Find the highest urgency active drain within a straight-line limit, with a Google Maps walking-directions handoff."
+  },
+  "servers": [
+    {
+      "url": "https://villa.momen.app/zero/{project}/callback"
+    }
+  ],
+  "paths": {
+    "/{webhook_id}": {
+      "post": {
+        "operationId": "findNearbyUrgentDrain",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "latitude",
+                  "longitude",
+                  "max_walking_distance_meters"
+                ],
+                "properties": {
+                  "latitude": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "max_walking_distance_meters": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Used as a straight-line limit, not a routed walking distance."
+                  }
+                }
+              },
+              "example": {
+                "latitude": 0,
+                "longitude": 20,
+                "max_walking_distance_meters": 500
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selection result (FOUND, NO_MATCH, or INVALID_INPUT).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "message"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "FOUND",
+                        "NO_MATCH",
+                        "INVALID_INPUT"
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "drain_id": {
+                      "type": [
+                        "integer",
+                        "null"
+                      ]
+                    },
+                    "drain_name": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "address": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "urgency_score": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "urgency_reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "straight_line_distance_meters": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "directions_url": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "uri"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Webhook failed before or during execution. Over-limit requests can return this status."
+          }
+        }
+      }
+    }
+  }
+}
