@@ -186,7 +186,7 @@ else:
                                key="fc_basemap")
         show_hot = b2.toggle("Deepest spots", value=True, key="fc_hot")
         show_over = b3.toggle("Full drains", value=False, key="fc_over",
-                              help="Red dots: drains that got more water than they can take")
+                              help="Dark dots: drains that got more water than they can take")
         try:
             st_folium(render.flood_map(scn, basemap=basemap, show_hotspots=show_hot, show_overwhelmed=show_over),
                       key="flood-map", height=560, use_container_width=True, returned_objects=[])

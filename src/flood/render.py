@@ -12,15 +12,15 @@ from src.maps import BASEMAPS, FONT_LINK, TIP_CSS, TOOLTIP_RESET
 
 KM2_TO_ACRES = 247.105
 SF_FIT = [[37.708, -122.515], [37.812, -122.357]]
-OVERWHELMED_COLOR = "#D93025"
+OVERWHELMED_COLOR = "#1B1F24"  # dark, so it is not confused with deep (red) water
 MAX_INLET_DOTS = 3000
 
-# (min depth m, max depth m, color, label). Water blues like src.maps.RISK_BINS, darker = deeper.
+# (min depth m, max depth m, color, label). Light blue = shallow, through purple, to red = deep.
 DEPTH_CLASSES = [
-    (0.03, 0.15, "#9FD3F0", "1–6 in"),
-    (0.15, 0.30, "#4FA8DE", "6–12 in"),
-    (0.30, 0.60, "#1F66B8", "1–2 ft"),
-    (0.60, np.inf, "#0B2A5E", "Over 2 ft"),
+    (0.03, 0.15, "#8FD0F5", "1–6 in"),
+    (0.15, 0.30, "#2F7FD6", "6–12 in"),
+    (0.30, 0.60, "#9B3FB5", "1–2 ft"),
+    (0.60, np.inf, "#D62828", "Over 2 ft"),
 ]
 ALPHA = 0.75
 
@@ -105,7 +105,7 @@ def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, sh
                    f'<div style="font-size:14px">Up to <b>{depth_in:.0f} in</b> of water</div>'
                    f'<div style="opacity:.6;font-size:12px">About {acres:.1f} acres ponded</div>')
             folium.CircleMarker((float(r.lat), float(r.lon)), radius=7 + min(8.0, acres ** 0.5 * 1.5),
-                                color="#FFFFFF", weight=2, fill=True, fill_color="#0B2A5E", fill_opacity=0.85,
+                                color="#FFFFFF", weight=2, fill=True, fill_color="#3A3F47", fill_opacity=0.85,
                                 tooltip=folium.Tooltip(tip, style=TIP_CSS, sticky=True)).add_to(fg)
         fg.add_to(m)
 

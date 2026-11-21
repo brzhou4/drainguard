@@ -41,8 +41,10 @@ def test_depth_png():
     assert a[0, 0, 3] == 0 and a[1, 1, 3] == 0 and a[10, 10, 3] == 0
     for rc in [(2, 3), (5, 5), (6, 6), (7, 7)]:
         assert a[rc][3] > 150
-    # deeper is darker
-    assert a[7, 7, :3].sum() < a[6, 6, :3].sum() < a[5, 5, :3].sum() < a[2, 3, :3].sum()
+    # shallow is light blue, deep is red: red share rises and blue share falls with depth
+    red = [a[rc][0] / a[rc][:3].sum() for rc in [(2, 3), (5, 5), (6, 6), (7, 7)]]
+    blue = [a[rc][2] / a[rc][:3].sum() for rc in [(2, 3), (5, 5), (6, 6), (7, 7)]]
+    assert blue[0] > red[0] and red[-1] > blue[-1] and red[-1] == max(red) and blue[-1] == min(blue)
 
 
 def test_depth_classes_shape():
