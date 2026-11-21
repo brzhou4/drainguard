@@ -89,8 +89,8 @@ def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, sh
                  for la, lo in zip(over["lat"], over["lon"])]
         if feats:
             folium.GeoJson({"type": "FeatureCollection", "features": feats}, name="Overwhelmed drains",
-                           marker=folium.CircleMarker(radius=2.5, weight=0, fill=True, fill_color=OVERWHELMED_COLOR,
-                                                      fill_opacity=0.85)).add_to(m)
+                           marker=folium.CircleMarker(radius=1.6, weight=0, fill=True, fill_color=OVERWHELMED_COLOR,
+                                                      fill_opacity=0.6)).add_to(m)
 
     hotspots = getattr(scenario, "hotspots", None)
     if show_hotspots and hotspots is not None and len(hotspots):
@@ -129,5 +129,6 @@ def timeline_chart(result):
     tl = pd.DataFrame(result.timeline or [])
     if tl.empty or "t_hr" not in tl:
         return pd.DataFrame({"Flooded acres": []}, index=pd.Index([], name="Hours"))
-    acres = tl["flooded_km2"].astype(float) * KM2_TO_ACRES if "flooded_km2" in tl else 0.0
-    return pd.DataFrame({"Flooded acres": np.round(acres, 1)}, index=pd.Index(tl["t_hr"].round(2), name="Hours"))
+    acres = tl["flooded_km2"].to_numpy(float) * KM2_TO_ACRES if "flooded_km2" in tl else np.zeros(len(tl))
+    return pd.DataFrame({"Flooded acres": np.round(acres, 1)},
+                        index=pd.Index(tl["t_hr"].to_numpy(float).round(2), name="Hours"))

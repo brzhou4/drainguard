@@ -8,7 +8,6 @@ import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
-from src.flood import RainEvent
 from src.flood.validate import validation_panel
 from src.maps import BASEMAPS
 
@@ -42,14 +41,24 @@ def _storms():
     return weather_input.notable_storms(n=10)
 
 
-@st.cache_resource(max_entries=8, show_spinner=False)
-def _run(depth_in, duration_hr, intensity, step_min, source, label, date, notes, cell_m, clog_pct, runoff,
-         _progress=None):
-    """Keyed on the RainEvent's fields (the dataclass itself isn't hashable)."""
+@st.cache_resource
+def _runs():
+    """Process-wide memo of finished scenarios (a plain dict so the progress bar can update live)."""
+    return {}
+
+
+def _run(rain, cell_m, clog_pct, runoff, progress=None):
+    """calc.run memoised on the RainEvent's fields (the dataclass itself isn't hashable)."""
     from src.flood import calc
-    rain = RainEvent(depth_in=depth_in, duration_hr=duration_hr, intensity_mm_hr=np.array(intensity, float),
-                     step_min=step_min, source=source, label=label, date=date, notes=list(notes))
-    return calc.run(rain, cell_m=cell_m, clog_pct=clog_pct, runoff_coeff=runoff, progress=_progress)
+    key = (float(rain.depth_in), float(rain.duration_hr),
+           tuple(np.round(np.asarray(rain.intensity_mm_hr, float), 4).tolist()), float(rain.step_min),
+           rain.source, rain.label, rain.date, float(cell_m), float(clog_pct), float(runoff))
+    memo = _runs()
+    if key not in memo:
+        if len(memo) >= 8:
+            memo.pop(next(iter(memo)))
+        memo[key] = calc.run(rain, cell_m=cell_m, clog_pct=clog_pct, runoff_coeff=runoff, progress=progress)
+    return memo[key]
 
 
 def _how_common(rp):
@@ -135,10 +144,7 @@ if go and rain is not None:
 
     try:
         with st.spinner("Simulating water flowing over the city..."):
-            scn = _run(float(rain.depth_in), float(rain.duration_hr),
-                       tuple(np.round(np.asarray(rain.intensity_mm_hr, float), 4).tolist()),
-                       float(rain.step_min), rain.source, rain.label, rain.date, tuple(rain.notes or []),
-                       cell_m, float(clog), float(runoff), _progress=_progress)
+            scn = _run(rain, cell_m, float(clog), float(runoff), progress=_progress)
         st.session_state["fc_scn"] = scn
     except Exception as e:
         st.error(f"The flood model couldn't run: {e}", icon=":material/error:")
@@ -179,7 +185,8 @@ else:
         basemap = b1.selectbox("Map style", list(BASEMAPS), index=list(BASEMAPS).index("Terrain shading (USGS)"),
                                key="fc_basemap")
         show_hot = b2.toggle("Deepest spots", value=True, key="fc_hot")
-        show_over = b3.toggle("Full drains", value=True, key="fc_over")
+        show_over = b3.toggle("Full drains", value=False, key="fc_over",
+                              help="Red dots: drains that got more water than they can take")
         try:
             st_folium(render.flood_map(scn, basemap=basemap, show_hotspots=show_hot, show_overwhelmed=show_over),
                       key="flood-map", height=560, use_container_width=True, returned_objects=[])

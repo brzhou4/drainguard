@@ -71,5 +71,6 @@ def test_charts():
     assert abs(h["Rain (in/h)"].iloc[1] - 20 / 25.4) < 1e-3
     t = render.timeline_chart(r)
     assert list(t.columns) == ["Flooded acres"] and len(t) == 3 and t.index.name == "Hours"
+    assert t["Flooded acres"].notna().all() and abs(t["Flooded acres"].iloc[-1] - 0.15 * 247.105) < 0.1
     r.timeline = []
     assert render.timeline_chart(r).empty
