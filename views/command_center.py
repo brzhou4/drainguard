@@ -192,6 +192,8 @@ with map_col:
         center, zoom, focus = (selected["lat"], selected["lon"]), 17, selected["asset_id"]
         st.caption(f"Zoomed to drain #{int(selected['rank'])} ({selected['neighborhood']}). "
                    "Deselect the row to see the whole city.")
+    elif hood_pick != "All neighborhoods" and len(view):
+        center, zoom, focus = (float(view["lat"].mean()), float(view["lon"].mean())), 14, None
     else:
         center, zoom, focus = None, 12, None
     st_folium(drain_map(view, show_heat, show_zone, show_nov18,
