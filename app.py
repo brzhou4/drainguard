@@ -20,8 +20,10 @@ h1 { font-weight: 700 !important; letter-spacing: -0.01em; }
 
 pages = [
     st.Page("views/command_center.py", title="Command Center", icon=":material/dashboard:", default=True),
+    st.Page("views/forecast.py", title="Flood Forecast", icon=":material/rainy:"),
     st.Page("views/volunteer.py", title="Volunteer", icon=":material/volunteer_activism:"),
     st.Page("views/evidence.py", title="Evidence", icon=":material/fact_check:"),
+    st.Page("views/assistant.py", title="Ask DrainGuard", icon=":material/chat:"),
 ]
 
 st.sidebar.markdown("### DrainGuard")

@@ -49,6 +49,8 @@ top_l, top_r = st.columns([3, 1])
 with top_l:
     st.title("DrainGuard Command Center")
     st.caption(f"Data loaded {now_str()} · Drains ranked by how likely they are to need checking")
+    st.page_link("views/forecast.py", label="Flood Forecast: rain and citywide 311 report score by 3-hour window",
+                 icon=":material/rainy:")
 with top_r:
     st.write("")
     send = st.button("Send storm alert", type="primary", use_container_width=True,

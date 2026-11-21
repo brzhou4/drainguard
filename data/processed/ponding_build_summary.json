@@ -1,0 +1,45 @@
+{
+ "built_at_utc": "2026-11-21T22:14:55+00:00",
+ "tiles": {
+  "zoom": 13,
+  "x": [
+   1307,
+   1311
+  ],
+  "y": [
+   3164,
+   3168
+  ],
+  "url": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+ },
+ "raster_px": [
+  1280,
+  1280
+ ],
+ "depressions": 6938,
+ "depression_px": 260810,
+ "rain_window_utc": [
+  "2026-11-19T01:00:00+00:00",
+  "2026-11-20T00:00:00+00:00"
+ ],
+ "rain_mm_by_point": [
+  71.5,
+  18.7,
+  32.9,
+  18.8,
+  57.3
+ ],
+ "runoff_fraction": 0.5,
+ "runoff_m3": 6981375.8,
+ "storage_m3": 3274837.2,
+ "spill_m3": 3569715.3,
+ "boundary_outflow_m3": 136823.2,
+ "street_cells": 10802,
+ "cell_m": 100,
+ "crs": "EPSG:26910",
+ "ponding_cells": 1446,
+ "ponding_min_m": 0.1,
+ "terrain_cells": 1364,
+ "terrain_min_m": 0.25,
+ "limits": "Terrain-only. No spill routing, inlet capture, pipe capacity, infiltration model, or confirmed water depth."
+}

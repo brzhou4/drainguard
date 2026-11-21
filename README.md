@@ -33,10 +33,16 @@ Note: the 311 flood label changed in June 2024 (`Sewer Issues` / `Flooding` → 
 
 ## App
 
-A 3-page Streamlit app:
+A 5-page Streamlit app:
 - **Command Center:** urgency list, map, and a storm alert sent through ntfy.sh.
+- **Flood Forecast:** Open-Meteo HRRR/GFS rain in eight three-hour windows (Pacific time), with a
+  *citywide SF311 street-flood report score* from a frozen model trained on archived day-ahead forecasts.
+  It also has an archived Nov 18–19 replay with an optional 24-hour modeled ponding scenario. The score is
+  about report timing, not a street-level flood probability or an official warning.
 - **Volunteer:** nearby drains to look at and report. Look and report only, never during a storm.
 - **Evidence:** test results and limits.
+- **Ask DrainGuard:** read-only chat (no LLM, no API key) for app FAQs, drain ID lookups, unchecked ranked
+  drains by neighborhood, and rain plus static terrain screening near a place.
 
 ```bash
 pip install -r requirements.txt            # app only
@@ -66,12 +72,27 @@ streamlit run app.py --server.address 0.0.0.0
 | `flood_zone.geojson` | map toggle |
 | `checks.md`, `limits.md` | Evidence |
 
+### Forecast replay and terrain layers
+
+Committed, rebuilt offline:
+
+| File | Built by |
+| --- | --- |
+| `data/fixtures/open_meteo_previous_day1_2026-11-18_20.json` | `python scripts/fetch_replay_fixture.py` (Open-Meteo previous-runs API; refuses to write if the archive changed) |
+| `data/processed/ponding_nov19_scenario.geojson`, `terrain_depressions.geojson`, `ponding_build_summary.json` | `python scripts/build_ponding.py` (needs `requirements-analysis.txt`) |
+
+The ponding builder mosaics Terrarium elevation tiles (z13), runs an 8-neighbor priority flood, fills each
+depression with 50% of Nov 19 forecast rain as runoff, and samples 100 m street cells. It is uncalibrated
+and terrain-only. It does not route spill or model inlets, pipes or measured depth. The official SFPUC
+100-year hazard layer (DataSF jzu3-4yxp) is a separate dataset and is not used as a storm prediction.
+
 ## Repo layout
 
 ```text
 app.py                 # Streamlit entry point
-views/                 # Command Center, Volunteer, Evidence
-src/                   # alerts.py, geo.py, analysis code
+views/                 # Command Center, Flood Forecast, Volunteer, Evidence, Ask DrainGuard
+src/                   # alerts.py, geo.py, forecast.py, assistant.py, analysis code
+scripts/               # offline builders: forecast replay fixture, ponding/terrain layers
 notebooks/             # analysis notebook
 data/raw/              # downloaded datasets (not committed if large)
 data/processed/        # drain_scores.csv etc. (current file is FAKE starter data)
