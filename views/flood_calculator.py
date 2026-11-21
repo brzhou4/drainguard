@@ -9,6 +9,7 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from src.flood import RainEvent
+from src.flood.validate import validation_panel
 from src.maps import BASEMAPS
 
 SHAPES = {"Typical Bay Area storm": "scs1", "Steady rain": "uniform", "Heavy start": "front",
@@ -226,6 +227,11 @@ else:
     d3.download_button("Depth image (PNG)", render.depth_png(res), f"sf_flood_depth_{tag}.png", "image/png",
                        width="stretch",
                        help=f"One pixel per grid cell, north up. Bounds [[S, W], [N, E]]: {res.grid.bounds()}")
+
+try:
+    validation_panel()
+except Exception as e:
+    st.caption(f"Validation results unavailable: {e}")
 
 with st.expander("How this works & limits"):
     st.markdown(
