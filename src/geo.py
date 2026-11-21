@@ -19,8 +19,59 @@ def nearest_drains(drains: pd.DataFrame, lat, lon, radius_m=400, limit=5):
     d = drains.copy()
     d["distance_m"] = [haversine_m(lat, lon, a, b) for a, b in zip(d["lat"], d["lon"])]
     d = d[d["distance_m"] <= radius_m].sort_values("distance_m").head(limit)
-    d["walk_min"] = (d["distance_m"] / 80).round().astype(int)
+    d["walk_min"] = [walk_minutes(m) for m in d["distance_m"]]
     return d
+
+
+# SF streets are a grid on hills, so the real walk is longer than a straight line.
+WALK_FACTOR = 1.3
+WALK_M_PER_MIN = 80
+
+
+def walk_minutes(straight_m):
+    """Estimated walking minutes for a straight-line distance (at least 1)."""
+    return max(1, int(round(straight_m * WALK_FACTOR / WALK_M_PER_MIN)))
+
+
+def walking_order(drains: pd.DataFrame, lat, lon):
+    """Order drains as a walk: start at (lat, lon), always go to the closest unvisited drain next.
+    Adds 'stop' (1, 2, ...), 'leg_m' (straight line from the previous stop) and 'leg_min'."""
+    left = drains.copy()
+    order, legs = [], []
+    here = (lat, lon)
+    while len(left):
+        dist = [haversine_m(here[0], here[1], a, b) for a, b in zip(left["lat"], left["lon"])]
+        i = min(range(len(dist)), key=dist.__getitem__)
+        row = left.iloc[i]
+        order.append(row.name)
+        legs.append(dist[i])
+        here = (row["lat"], row["lon"])
+        left = left.drop(index=row.name)
+    out = drains.loc[order].copy()
+    out["stop"] = range(1, len(out) + 1)
+    out["leg_m"] = legs
+    out["leg_min"] = [walk_minutes(m) for m in legs]
+    return out
+
+
+def street_view_url(lat, lon):
+    return f"https://www.google.com/maps/@?api=1&map_action=pano&viewpoint={lat},{lon}"
+
+
+def maps_url(lat, lon):
+    return f"https://www.google.com/maps/search/?api=1&query={lat},{lon}"
+
+
+def walking_route_url(home, stops):
+    """Google Maps walking directions from home through every stop (up to 9 waypoints)."""
+    pts = [f"{la},{lo}" for la, lo in stops][:10]
+    if not pts:
+        return ""
+    url = (f"https://www.google.com/maps/dir/?api=1&travelmode=walking&origin={home[0]},{home[1]}"
+           f"&destination={pts[-1]}")
+    if len(pts) > 1:
+        url += "&waypoints=" + "%7C".join(pts[:-1])
+    return url
 
 
 # Rough San Francisco box (lat_min, lat_max, lon_min, lon_max), used to reject spots outside the city.

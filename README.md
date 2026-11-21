@@ -36,6 +36,14 @@ Note: the 311 flood label changed in June 2024 (`Sewer Issues` / `Flooding` → 
 A 3-page Streamlit app:
 - **Command Center:** urgency list, map, and a storm alert sent through ntfy.sh.
 - **Volunteer:** nearby drains to look at and report. Look and report only, never during a storm.
+  - Anonymous: no names. Each volunteer gets a private sign-in link (`?v=token`).
+  - Storm lock: when the forecast says storm, checks pause and the Command Center can't send volunteers out.
+  - Start spot by location, address/cross streets, or map; age question and safety pledge.
+  - Walking route in nearest-next order, numbered map, Google Maps walking link, Street View.
+  - "I'm heading there" hides that drain from everyone else (lists and maps, Command Center too) for the walk time + 20 minutes, or until it's reported.
+  - Report form (condition, note, photo); Blocked opens the pre-filled SF 311 sewer form.
+  - "Couldn't reach" drains stay listed; checks expire after `CHECK_TTL_DAYS` (default 7) or a new check round.
+  - Saved in Supabase if `SUPABASE_URL`/`SUPABASE_KEY` are set (run `docs/supabase_schema.sql`, add a private `photos` bucket); otherwise local files that reset on restart.
 - **Evidence:** test results and limits.
 
 ```bash
