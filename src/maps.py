@@ -16,7 +16,8 @@ TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;borde
                  "box-shadow:none!important;padding:0!important;}"
                  ".leaflet-tooltip:before,.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,"
                  ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}"
-                 ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}</style>")
+                 ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}"
+                 ".hide-labels .nhood-label{display:none!important;}</style>")
 TIP_CSS = ("background-color:#17171C;color:#F5F5F7;font-family:Poppins,sans-serif;font-size:13px;"
            "border:1px solid #3A3A44;border-radius:8px;padding:8px 11px;box-shadow:0 6px 18px rgba(0,0,0,.35);")
 
@@ -68,7 +69,8 @@ def legend_html():
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
               radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None):
-    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None, prefer_canvas=True, max_zoom=19)
+    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None, prefer_canvas=True, max_zoom=19,
+                   height="540px")
     m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
     b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
     folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
@@ -194,9 +196,15 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
             folium.Circle(you, radius=radius_m, color="#1F3A5F", weight=1, fill=False).add_to(m)
 
     m.get_root().html.add_child(folium.Element(legend_html()))
-    # Re-measure after Streamlit finishes laying out the page (fixes off-center map + gray missing tiles).
-    view_center = list(center or SF_CENTER)
+    # Re-measure after Streamlit lays out the page, frame the view, and only show neighborhood
+    # names when zoomed in enough that they don't pile on top of each other.
+    name = m.get_name()
+    if center is None:
+        frame = f"{name}.fitBounds([[37.708, -122.515], [37.812, -122.357]]);"
+    else:
+        frame = f"{name}.setView({list(center)}, {zoom});"
     m.get_root().script.add_child(folium.Element(
-        f"[150, 600, 1500].forEach(function(t){{ setTimeout(function(){{"
-        f" {m.get_name()}.invalidateSize(); {m.get_name()}.setView({view_center}, {zoom}); }}, t); }});"))
+        f"function _labels(){{ {name}.getContainer().classList.toggle('hide-labels', {name}.getZoom() < 13); }}"
+        f"{name}.on('zoomend', _labels); _labels();"
+        f"[150, 600, 1500].forEach(function(t){{ setTimeout(function(){{ {name}.invalidateSize(); {frame} _labels(); }}, t); }});"))
     return m
