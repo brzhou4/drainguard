@@ -22,6 +22,7 @@ pages = [
     st.Page("views/command_center.py", title="Command Center", icon=":material/dashboard:", default=True),
     st.Page("views/volunteer.py", title="Volunteer", icon=":material/volunteer_activism:"),
     st.Page("views/evidence.py", title="Evidence", icon=":material/fact_check:"),
+    st.Page("views/flood_calculator.py", title="Flood Calculator", icon=":material/flood:"),
 ]
 
 st.sidebar.markdown("### DrainGuard")
