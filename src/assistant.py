@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 from src import forecast as fc
+from src import matching as mt
 from src.data import NEIGHBORHOOD_CENTERS
 from src.geo import haversine_m
 
@@ -28,10 +29,7 @@ EXTRA_PLACES = {
     "Bayview": NEIGHBORHOOD_CENTERS["Bayview Hunters Point"],
     "SoMa": NEIGHBORHOOD_CENTERS["South of Market"],
 }
-PLACES = {**NEIGHBORHOOD_CENTERS, **EXTRA_PLACES}
-PLACE_ALIASES = {"sf": "San Francisco", "the city": "San Francisco", "soma": "SoMa", "the mission": "Mission",
-                 "mission district": "Mission", "bayview hunters point": "Bayview Hunters Point",
-                 "south of market": "South of Market", "outer sunset": "Sunset", "richmond district": "Richmond"}
+PLACES = {**NEIGHBORHOOD_CENTERS, **EXTRA_PLACES}   # always available, even offline
 
 FAQS = [
     (("forecast score", "report score", "sf311 score", "311 score", "citywide score", "what does the score",
@@ -77,16 +75,19 @@ FAQS = [
      "emergencies call 911; for official warnings see weather.gov/mtr."),
 ]
 
+FAQS.append((("what is drainguard", "what is this", "what does this app do", "what does drainguard do",
+              "about this app", "who made"),
+             "**DrainGuard** ranks San Francisco storm drains that are likely to need checking before a storm, "
+             "using past 311 flood reports. Crews use the Command Center, neighbors use Volunteer, Evidence "
+             "shows how the ranking did on the Nov 18 storm, and Flood Forecast shows upcoming rain by "
+             "three-hour window. Built at Acalanes Data Fest 2026 with public SF data."))
+
 HELP = ("I can answer questions about the app and look things up (read-only). Try:\n"
         "- *What does the forecast score mean?*\n"
         "- A drain ID, like *N-11029*\n"
         "- *Which unchecked drains are in the Mission?*\n"
-        "- *Rain near 37.7625, -122.4155* or *Rain in SoMa*")
-
-WEATHER_RE = re.compile(r"\b(rain|raining|rainfall|rainy|weather|wet|precip\w*|drizzle|showers?)\b"
-                        r"|\bforecast (for|near|at|in)\b")
-UNCHECKED_WORDS = ("unchecked", "not checked", "need checking", "needs checking", "haven't been checked",
-                   "still need", "to check in", "drains in", "drains near")
+        "- *Rain near 37.7625, -122.4155* or *Is it gonna pour near Dolores Park?*\n\n"
+        "Casual wording, typos and most SF neighborhood names are fine.")
 
 
 def map_link(lat, lon):
@@ -147,71 +148,51 @@ def _status_lookup():
     return {str(a): (st, t) for a, st, t in zip(s["asset_id"], s["status"], s.get("time", [""] * len(s)))}
 
 
-# ---------- Parsing ----------
-COORD_RE = re.compile(r"(-?\d{1,3}\.\d+)\s*[, ]\s*(-?\d{1,3}\.\d+)")
-ID_RE = re.compile(r"\b[A-Za-z]{1,4}-?\d{2,8}\b")
+# ---------- Places ----------
+def _hood_centers():
+    """DataSF Analysis Neighborhood centers (average of each outline's largest ring). {} if unavailable."""
+    try:
+        from src.data import neighborhoods_geojson
+        gj = neighborhoods_geojson()
+    except Exception:
+        return {}
+    out = {}
+    for f in (gj or {}).get("features", []):
+        name, geom = (f.get("properties") or {}).get("nhood"), f.get("geometry") or {}
+        if not name or geom.get("type") not in ("Polygon", "MultiPolygon"):
+            continue
+        polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+        ring = max((poly[0] for poly in polys), key=len)
+        out[name] = (sum(pt[1] for pt in ring) / len(ring), sum(pt[0] for pt in ring) / len(ring))
+    return out
 
 
-def find_coords(text):
-    m = COORD_RE.search(text)
-    if not m:
-        return None
-    a, b = float(m.group(1)), float(m.group(2))
-    if abs(a) > 90 and abs(b) <= 90:  # lon, lat order
-        a, b = b, a
-    return a, b
+def all_places():
+    """Static app places plus the 41 SF Analysis Neighborhoods when the map layer is reachable."""
+    return {**_hood_centers(), **PLACES}
 
 
 def in_sf(lat, lon):
     return SF_BBOX[0] <= lat <= SF_BBOX[1] and SF_BBOX[2] <= lon <= SF_BBOX[3]
 
 
-FOLLOW_OK = {"", "today", "tomorrow", "tonight", "this", "next", "now", "right", "please", "district", "area",
-             "neighborhood", "and", "or", "over", "during", "for", "in", "at", "on", "the", "weekend", "later",
-             "soon", "morning", "afternoon", "evening", "overnight", "drains", "drain", "s"}
-
-
-def find_place(text):
-    """A known place name in the text, or None. 'Mission Bay' or 'Richmond Heights' are NOT the Mission or the
-    Richmond: a place followed by another name word is treated as an unknown location."""
-    t = " " + re.sub(r"[^a-z0-9/ ]", " ", text.lower()) + " "
-    names = sorted(list(PLACES) + list(PLACE_ALIASES), key=len, reverse=True)
-    for n in names:
-        key = f" {n.lower()} "
-        pos = t.find(key)
-        if pos < 0:
-            continue
-        nxt = t[pos + len(key):].split(" ", 1)[0]
-        if nxt not in FOLLOW_OK:
-            return None
-        return PLACE_ALIASES.get(n.lower(), n)
-    return None
-
-
 def find_drain_id(text, inv):
-    """Exact (then case-insensitive) match of a token to an inventory asset ID, as stored."""
-    for tok in ID_RE.findall(text):
-        if tok in inv:
-            return tok
-    lower = {k.lower(): k for k in inv} if inv else {}
-    for tok in ID_RE.findall(text):
-        if tok.lower() in lower:
-            return lower[tok.lower()]
+    """First written drain ID that exists in the inventory, using the inventory's own formatting."""
+    for cid in mt.drain_id_candidates(text):
+        if cid in inv:
+            return cid
     return None
 
 
-def looks_like_id(text):
-    return bool(re.search(r"\b[A-Za-z]{1,4}-\d{2,8}\b", text))
-
-
-def location_phrase(text):
-    m = re.search(r"\b(?:in|near|at|around|for)\s+([A-Za-z][A-Za-z .'/-]{1,40})", text)
-    if not m:
-        return None
-    phrase = m.group(1).strip(" .?!")
-    if phrase.lower() in ("the next", "next", "today", "tomorrow", "tonight", "the city"):
-        return None
-    return phrase
+def _place_note(canon, how):
+    if how == "exact" or how is None:
+        return ""
+    kind, original = how
+    if kind == "fuzzy":
+        return f"_Reading “{original}” as **{canon}**._\n\n"
+    if original.lower() not in (canon.lower(), f"the {canon.lower()}"):
+        return f"_Using the **{canon}** neighborhood for “{original}”._\n\n"
+    return ""
 
 
 # ---------- Answers ----------
@@ -234,25 +215,29 @@ def answer_drain(aid, inv):
             "Status comes from this app's check buttons. I can't change it here.")
 
 
-def answer_unchecked(hood_name):
+def answer_unchecked(place):
+    """Up to five unchecked ranked drains in a place (historical ranking order, fake rows excluded)."""
     from src.data import drains_with_status
     d = drains_with_status()
     if "is_fake" in d.columns:
         d = d[~d["is_fake"].astype(str).str.lower().eq("true")]
-    hoods = {h.lower(): h for h in d["neighborhood"].dropna().unique()}
-    key = hood_name.lower()
-    match = hoods.get(key) or next((v for k, v in hoods.items() if key in k or k in key), None)
-    if match is None:
-        if d.empty:
-            return ("The historical drain ranking isn't loaded right now (only placeholder rows are available), "
-                    "so I can't list real drains. Try again after the Command Center loads live data.")
-        return f"I couldn't find **{hood_name}** among the ranked drains' neighborhoods."
-    sel = d[(d["neighborhood"] == match) & (d["status"] == "Not checked")].sort_values("rank").head(5)
+    if d.empty:
+        return ("The historical drain ranking isn't loaded right now (only placeholder rows are available), "
+                "so I can't list real drains. Try again after the Command Center loads live data.")
+    ranked_hoods = set(d["neighborhood"].dropna().unique())
+    if place == "San Francisco":
+        targets, label = ranked_hoods, "San Francisco"
+    else:
+        targets = {h for h in mt.RANKED_HOODS.get(place, [place]) if h in ranked_hoods}
+        label = place
+    if not targets:
+        return f"None of the historical ranked drains are in **{place}**."
+    sel = d[d["neighborhood"].isin(targets) & (d["status"] == "Not checked")].sort_values("rank").head(5)
     if sel.empty:
-        return f"No unchecked ranked drains in **{match}** right now."
-    lines = [f"{i}. #{int(r['rank'])} {r['tier']} · `{r['asset_id']}` · [map]({map_link(r['lat'], r['lon'])})"
-             for i, (_, r) in enumerate(sel.iterrows(), 1)]
-    return (f"**Unchecked ranked drains in {match}** (historical ranking, top {len(sel)}):\n" + "\n".join(lines)
+        return f"No unchecked ranked drains in **{label}** right now."
+    lines = [f"{i}. #{int(r['rank'])} {r['tier']} · {r['neighborhood']} · `{r['asset_id']}` · "
+             f"[map]({map_link(r['lat'], r['lon'])})" for i, (_, r) in enumerate(sel.iterrows(), 1)]
+    return (f"**Unchecked ranked drains in {label}** (historical ranking, top {len(sel)}):\n" + "\n".join(lines)
             + "\n\nRanks come from the Command Center's historical ranking.")
 
 
@@ -307,50 +292,58 @@ def respond(text):
     text = (text or "").strip()
     if not text:
         return HELP
-    low = text.lower().replace("\u2019", "'")
-    wants_weather = bool(WEATHER_RE.search(low))
+    low, fixes = mt.normalize(text)
+    note = ""
+    if fixes:
+        note = "_Reading " + ", ".join(f"“{a}” as “{b}”" for a, b in fixes) + "._\n\n"
+    wants_weather = mt.wants_weather(low)
 
-    coords = find_coords(text)
+    coords = mt.find_coords(text)
     if coords:
-        lat, lon = coords
+        lat, lon, cnote = coords
+        if cnote:
+            note += f"_{cnote}_\n\n"
         if not in_sf(lat, lon):
-            return f"{lat}, {lon} is outside San Francisco. Send a latitude, longitude inside the city."
-        return answer_weather(lat, lon, "your point")
+            return note + f"{lat}, {lon} is outside San Francisco. Send a latitude, longitude inside the city."
+        return note + answer_weather(lat, lon, "your point")
 
-    inv = None
-    if looks_like_id(text):
+    if mt.drain_id_candidates(text):
         try:
             inv = inventory()
         except Exception:
-            return "I couldn't reach the DataSF drain inventory right now, so I can't look up that ID."
+            return note + "I couldn't reach the DataSF drain inventory right now, so I can't look up that ID."
         aid = find_drain_id(text, inv)
         if aid is None:
-            return ("I couldn't find that drain ID in the DataSF inventory. IDs look like `N-11029`. "
-                    "Check the ID on the Command Center list.")
+            return note + ("I couldn't find that drain ID in the DataSF inventory. IDs look like `N-11029`. "
+                           "Check the ID on the Command Center list.")
         if wants_weather:
             lat, lon, _ = inv[aid]
-            return answer_weather(lat, lon, f"drain {aid}")
-        return answer_drain(aid, inv)
+            return note + answer_weather(lat, lon, f"drain {aid}")
+        return note + answer_drain(aid, inv)
 
-    place = find_place(text)
-    if any(w in low for w in UNCHECKED_WORDS) and "drain" in low and not wants_weather:
+    places = all_places()
+    place, how = mt.find_place(low, places)
+    if place:
+        note += _place_note(place, how)
+    if mt.wants_unchecked(low) and not wants_weather:
         if place is None:
-            phrase = location_phrase(text)
-            return (f"I don't know the neighborhood **{phrase}**. Try one like Mission or South of Market."
-                    if phrase else "Which neighborhood? For example: *Which unchecked drains are in the Mission?*")
-        return answer_unchecked(place)
+            phrase = mt.location_phrase(text)
+            return note + (f"I don't know the neighborhood **{phrase}**. Try one like Mission or South of Market."
+                           if phrase else "Which neighborhood? For example: *Which unchecked drains are in the "
+                                          "Mission?*")
+        return note + answer_unchecked(place)
 
     if wants_weather:
         if place:
-            lat, lon = PLACES[place]
-            return answer_weather(lat, lon, place)
-        phrase = location_phrase(text)
+            lat, lon = places[place]
+            return note + answer_weather(lat, lon, place)
+        phrase = mt.location_phrase(text)
         if phrase:
-            return (f"I don't know where **{phrase}** is. Send a latitude, longitude inside San Francisco "
-                    "(for example *37.7625, -122.4155*), a drain ID, or a neighborhood like Mission or SoMa.")
-        return answer_weather(*PLACES["San Francisco"], "San Francisco")
+            return note + (f"I don't know where **{phrase}** is. Send a latitude, longitude inside San Francisco "
+                           "(for example *37.7625, -122.4155*), a drain ID, or a neighborhood like Mission or SoMa.")
+        return note + answer_weather(*PLACES["San Francisco"], "San Francisco (city center)")
 
-    faq = answer_faq(text)
+    faq = answer_faq(low)
     if faq:
-        return faq
-    return HELP
+        return note + faq
+    return note + HELP

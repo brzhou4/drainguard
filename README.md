@@ -42,7 +42,8 @@ A 5-page Streamlit app:
 - **Volunteer:** nearby drains to look at and report. Look and report only, never during a storm.
 - **Evidence:** test results and limits.
 - **Ask DrainGuard:** read-only chat (no LLM, no API key) for app FAQs, drain ID lookups, unchecked ranked
-  drains by neighborhood, and rain plus static terrain screening near a place.
+  drains by neighborhood, and rain plus static terrain screening near a place. It handles casual
+  wording, common typos and all 41 SF Analysis Neighborhoods (`src/matching.py`, tests in `tests/`).
 
 ```bash
 pip install -r requirements.txt            # app only
