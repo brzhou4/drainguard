@@ -69,8 +69,9 @@ def legend_html():
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
               radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None):
-    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None, prefer_canvas=True, max_zoom=19,
-                   height="540px")
+    # Canvas only when drawing 24k gray dots; SVG otherwise (more reliable inside Streamlit).
+    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None,
+                   prefer_canvas=all_drains is not None and len(all_drains) > 0, max_zoom=19)
     m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
     b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
     folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
@@ -196,15 +197,10 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
             folium.Circle(you, radius=radius_m, color="#1F3A5F", weight=1, fill=False).add_to(m)
 
     m.get_root().html.add_child(folium.Element(legend_html()))
-    # Re-measure after Streamlit lays out the page, frame the view, and only show neighborhood
-    # names when zoomed in enough that they don't pile on top of each other.
+    # Only show neighborhood names when zoomed in enough that they don't pile up.
     name = m.get_name()
-    if center is None:
-        frame = f"{name}.fitBounds([[37.708, -122.515], [37.812, -122.357]]);"
-    else:
-        frame = f"{name}.setView({list(center)}, {zoom});"
     m.get_root().script.add_child(folium.Element(
-        f"function _labels(){{ {name}.getContainer().classList.toggle('hide-labels', {name}.getZoom() < 13); }}"
+        f"function _labels(){{ {name}.getContainer().classList.toggle('hide-labels', {name}.getZoom() < 14); }}"
         f"{name}.on('zoomend', _labels); _labels();"
-        f"[150, 600, 1500].forEach(function(t){{ setTimeout(function(){{ {name}.invalidateSize(); {frame} _labels(); }}, t); }});"))
+        f"setTimeout(function(){{ {name}.invalidateSize(); _labels(); }}, 400);"))
     return m
