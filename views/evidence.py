@@ -17,9 +17,15 @@ if data_source() == "live" and RESULTS_JSON.exists():
                f"{s.get('storm_days_used', 0)} storm days (last training day {s.get('train_last_date', '?')}); "
                f"tested on {s.get('test_incidents', 0):,} incidents from Nov 18-19, 2026.")
 
-st.subheader("Results: share of Nov 18 flood incidents within 100 m of the chosen drains")
+st.subheader("Results: how many of our drains were real Nov 18 flood spots?")
+st.write("Hit rate = the share of our top drains that had a real flood report within 100 m on Nov 18.")
 if RESULTS_CSV.exists():
-    st.dataframe(pd.read_csv(RESULTS_CSV), hide_index=True, use_container_width=True)
+    res = pd.read_csv(RESULTS_CSV)
+    keep = {"K drains": "Top drains checked",
+            "Hit rate: DrainGuard drains at a Nov 18 flood spot": "DrainGuard hit rate",
+            "Hit rate: random drains": "Random drains hit rate"}
+    cols = [c for c in keep if c in res.columns]
+    st.dataframe(res[cols].rename(columns=keep), hide_index=True, use_container_width=True)
 else:
     st.info("Analysis results pending. The notebook writes data/processed/results_table.csv "
             "(method × K = 25, 50, 100, 250).")
