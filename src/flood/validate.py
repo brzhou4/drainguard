@@ -313,16 +313,16 @@ def validation_panel():
     })
     if "lift_vs_inlets" in df:
         show["Lift vs random drains"] = df["lift_vs_inlets"].map(lambda v: f"{v:.2f}x" if pd.notna(v) else "n/a")
-    st.dataframe(show, hide_index=True, use_container_width=True)
+    st.dataframe(show, hide_index=True, width="stretch")
     sp = data.get("spearman") or {}
     if "rho" in sp:
         st.caption(f"By neighborhood: reports vs simulated flooded acres, Spearman rho = {sp['rho']:.2f} "
                    f"(p = {sp['p']:.3f}, {sp['n_neighborhoods']} neighborhoods). "
                    f"{data.get('event', '')}, {data.get('rain_in', '')} in. Computed {data.get('generated', '')}.")
     with st.expander("Details"):
-        st.dataframe(pd.DataFrame(data["rows"]), hide_index=True, use_container_width=True)
+        st.dataframe(pd.DataFrame(data["rows"]), hide_index=True, width="stretch")
         if data.get("neighborhoods"):
-            st.dataframe(pd.DataFrame(data["neighborhoods"]), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(data["neighborhoods"]), hide_index=True, width="stretch")
         for n in data.get("notes", []):
             st.caption(n)
 
