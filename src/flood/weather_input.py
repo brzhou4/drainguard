@@ -412,9 +412,8 @@ def _hourly_for_day(day, now_s=None):
     if now_s - t0 < NWS_OBS_DAYS * 86400:
         try:
             o = _observed(t0, t1 + 3600)
-            if o["intervals"] or o["all_null"]:
-                res = {"intervals": _clip(o["intervals"], t0, t1), "station": o["station"], "missing": o["missing"],
-                       "source": f"NWS hourly observations at {o['name']} ({o['station']})"}
+            res = {"intervals": _clip(o["intervals"], t0, t1), "station": o["station"], "missing": o["missing"],
+                   "source": f"NWS hourly observations at {o['name']} ({o['station']})"}
         except Exception:  # noqa: BLE001
             res = None
     if res is None:
