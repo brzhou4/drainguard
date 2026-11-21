@@ -22,7 +22,10 @@ OTHER_DRAIN_COLOR = "#9AA0A6"  # gray = every other mapped drain
 STATUSES = ["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"]
 
 # SF 311 "Flooding, sewer and water leak issues" form. The city site can't be embedded (it blocks framing),
-# so we open it in a new tab with the category picked and the description already written.
+# so we open it in a new tab with the category picked, the description written and the drain's location set.
+# The form only takes a location from the link when address, latitude and longitude are all given; it then
+# skips its map step and checks the spot is inside SF itself ("Out of service area" otherwise). With the
+# "Catch basin" type set too, the link opens on the last step (optional contact info), ready to submit.
 SF311_SEWER_FORM = "https://mobile311.sfgov.org/tickets/new"
 
 
@@ -37,12 +40,25 @@ def sf311_description(drain):
             "This drain is on the flood-risk list; please clear it before the next storm.")
 
 
+def sf311_location_label(drain):
+    """What the city form shows as the address: we have no street address, so use the drain's coordinates."""
+    lat, lon = round(float(drain["lat"]), 6), round(float(drain["lon"]), 6)
+    hood = drain.get("neighborhood")
+    where = f" ({hood})" if isinstance(hood, str) and hood.strip() else ""
+    return f"Storm drain at {lat}, {lon}{where}"
+
+
 def sf311_report_url(drain):
-    """Link to the SF 311 sewer form with the category set and the description filled in."""
+    """Link to the SF 311 sewer form with category, type, description and location all filled in."""
     from urllib.parse import urlencode
+    lat, lon = round(float(drain["lat"]), 6), round(float(drain["lon"]), 6)
     return SF311_SEWER_FORM + "?" + urlencode({
         "submission[ticket_type_code]": "input:Sewer",
         "submission[details][spot:description]": sf311_description(drain),
+        "submission[details][spot:location][address]": sf311_location_label(drain),
+        "submission[details][spot:location][latitude]": lat,
+        "submission[details][spot:location][longitude]": lon,
+        "submission[details][input.puc_sewer.Nature_of_request]": "catch_basin",
     })
 
 # Rough neighborhood centers, used when a volunteer picks a neighborhood instead of clicking the map.

@@ -84,15 +84,15 @@ STRINGS = {
     "report_311": {"en": "Open the SF 311 sewer report", "es": "Abrir el reporte de alcantarillado del SF 311",
                    "zh": "打开 SF 311 下水道报告"},
     "h311_steps": {
-        "en": "1. Tap the button. The **sewer category and description are already filled in.**\n"
-              "2. Drop the pin on the drain: **{lat}, {lon}**.\n"
-              "3. Add a photo only if it's safe, then submit.",
-        "es": "1. Toque el botón. **La categoría de alcantarillado y la descripción ya están llenas.**\n"
-              "2. Ponga el punto en la coladera: **{lat}, {lon}**.\n"
-              "3. Agregue una foto solo si es seguro y envíe.",
-        "zh": "1. 点击按钮。**下水道类别和描述已经填好。**\n"
-              "2. 把图钉放在排水口上：**{lat}, {lon}**。\n"
-              "3. 安全的话再加一张照片，然后提交。",
+        "en": "1. Tap the button. **The drain's location, type and description are already filled in.**\n"
+              "2. Add your contact info if you want updates from the city (optional).\n"
+              "3. Submit the report on the city page.",
+        "es": "1. Toque el botón. **La ubicación, el tipo y la descripción de la coladera ya están llenos.**\n"
+              "2. Agregue sus datos de contacto si quiere novedades de la ciudad (opcional).\n"
+              "3. Envíe el reporte en la página de la ciudad.",
+        "zh": "1. 点击按钮。**排水口的位置、类型和描述都已填好。**\n"
+              "2. 如果想收到市政府的进展通知，可以填写联系方式（可选）。\n"
+              "3. 在市政页面上提交报告。",
     },
     "h311_copy": {"en": "If the description is missing on the city form, copy it from here (in English for city staff):",
                   "es": "Si la descripción no aparece en el formulario de la ciudad, cópiela de aquí (en inglés para el personal de la ciudad):",
