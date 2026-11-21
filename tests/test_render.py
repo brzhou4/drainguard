@@ -74,3 +74,21 @@ def test_charts():
     assert t["Flooded acres"].notna().all() and abs(t["Flooded acres"].iloc[-1] - 0.15 * 247.105) < 0.1
     r.timeline = []
     assert render.timeline_chart(r).empty
+
+
+def test_heat_points_weights_and_cap():
+    assert len(render.heat_points(_result())) == 3            # 6 in+ only: 0.2, 0.4, 1.0 m
+    pts = render.heat_points(_result(), min_depth_m=0.03)
+    assert len(pts) == 4                      # 4 wet cells >= 3 cm; NaN and 1 cm cells skipped
+    w = sorted(p[2] for p in pts)
+    assert w[-1] == 1.0 and 0 < w[0] < 0.1    # 1 m capped at full heat, 5 cm faint
+    top = render.heat_points(_result(), max_points=2)
+    assert len(top) == 2 and min(p[2] for p in top) >= 0.4 / render.HEAT_FULL_M - 1e-3  # deepest kept
+
+
+def test_flood_map_heatmap_layer():
+    html = render.flood_map(_scenario(), show_heat=True).get_root().render()
+    assert "L.heatLayer" in html and "Flood heat" in html and "L.imageOverlay" in html
+    html = render.flood_map(_scenario(), show_heat=True, show_depth=False).get_root().render()
+    assert "L.heatLayer" in html and "L.imageOverlay" not in html
+    assert "L.heatLayer" not in render.flood_map(_scenario()).get_root().render()

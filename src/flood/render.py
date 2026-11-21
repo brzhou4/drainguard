@@ -3,6 +3,7 @@ import base64
 import io
 
 import folium
+from folium.plugins import HeatMap
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -14,6 +15,9 @@ KM2_TO_ACRES = 247.105
 SF_FIT = [[37.708, -122.515], [37.812, -122.357]]
 OVERWHELMED_COLOR = "#D93025"
 MAX_INLET_DOTS = 3000
+MAX_HEAT_POINTS = 20000
+HEAT_FULL_M = 0.6  # water this deep (2 ft) or more shows at full heat
+HEAT_MIN_M = 0.15  # only "flooded" water (6 in+) heats up; shallow sheet flow everywhere would wash it out
 
 # (min depth m, max depth m, color, label). Water blues like src.maps.RISK_BINS, darker = deeper.
 DEPTH_CLASSES = [
@@ -49,11 +53,15 @@ def depth_png(result, min_depth_m=0.03):
     return buf.getvalue()
 
 
-def _legend_html():
-    rows = "".join(
+def _legend_html(show_depth=True, show_heat=False):
+    rows = "" if not show_depth else "".join(
         f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:{c};'
         f'opacity:{ALPHA};margin-right:6px"></span>{label}</div>'
         for _, _, c, label in DEPTH_CLASSES)
+    if show_heat:
+        rows += ('<div style="margin-top:3px"><span style="display:inline-block;width:46px;height:8px;'
+                 'border-radius:4px;background:linear-gradient(90deg,blue,cyan,lime,yellow,red);'
+                 'margin-right:6px"></span>Flood heat</div>')
     rows += (f'<div style="margin-top:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
              f'background:{OVERWHELMED_COLOR};margin:0 8px 1px 2px"></span>Drain overwhelmed</div>')
     return ('<div style="position:absolute;bottom:24px;left:24px;z-index:9999;background:white;'
@@ -61,8 +69,23 @@ def _legend_html():
             f'<div style="font-weight:600;margin-bottom:3px">Water depth</div>{rows}</div>')
 
 
-def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, show_overwhelmed=True, height=560):
-    """Folium map: basemap + depth overlay + hotspot circles + overwhelmed inlets + legend."""
+def heat_points(result, min_depth_m=HEAT_MIN_M, max_points=MAX_HEAT_POINTS):
+    """[[lat, lon, weight], ...] for every cell with 6 in+ of water; weight = depth / 2 ft, capped at 1 (deepest kept if too many)."""
+    d = np.nan_to_num(np.asarray(result.depth_m, float), nan=0.0)
+    r, c = np.nonzero(d >= min_depth_m)
+    if not len(r):
+        return []
+    w = np.minimum(d[r, c] / HEAT_FULL_M, 1.0)
+    if len(r) > max_points:
+        keep = np.argsort(-d[r, c], kind="stable")[:max_points]
+        r, c, w = r[keep], c[keep], w[keep]
+    lat, lon = result.grid.latlon(r, c)
+    return np.c_[np.round(lat, 5), np.round(lon, 5), np.round(w, 3)].tolist()
+
+
+def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, show_overwhelmed=True, height=560,
+              show_heat=False, show_depth=True):
+    """Folium map: basemap + depth overlay and/or flood heatmap + hotspot circles + overwhelmed inlets + legend."""
     result = scenario.result
     m = folium.Map(location=(37.758, -122.44), zoom_start=12, tiles=None, prefer_canvas=True, max_zoom=19,
                    width="100%", height=f"{height}px")
@@ -74,10 +97,16 @@ def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, sh
         folium.TileLayer(tiles=BASEMAPS["Streets"]["tiles"], attr=BASEMAPS["Streets"]["attr"],
                          name="Streets", opacity=0.35, max_zoom=19, max_native_zoom=19).add_to(m)
 
-    uri = "data:image/png;base64," + base64.b64encode(depth_png(result)).decode()
-    # Lat/lon grid stretched linearly in Web Mercator: < 5 m error over SF, so no reprojection needed.
-    folium.raster_layers.ImageOverlay(uri, bounds=result.grid.bounds(), name="Flood depth", opacity=1.0,
-                                      interactive=False, pixelated=True).add_to(m)
+    if show_depth:
+        uri = "data:image/png;base64," + base64.b64encode(depth_png(result)).decode()
+        # Lat/lon grid stretched linearly in Web Mercator: < 5 m error over SF, so no reprojection needed.
+        folium.raster_layers.ImageOverlay(uri, bounds=result.grid.bounds(), name="Flood depth", opacity=1.0,
+                                          interactive=False, pixelated=True).add_to(m)
+
+    if show_heat:  # same style as the Command Center risk heatmap: hot = more and deeper water nearby
+        pts = heat_points(result)
+        if pts:
+            HeatMap(pts, radius=22, blur=18, min_opacity=0.3, max_zoom=14, name="Flood heatmap").add_to(m)
 
     inlets = getattr(scenario, "inlets", None)
     if show_overwhelmed and inlets is not None and len(inlets) and "overwhelmed" in inlets:
@@ -109,7 +138,7 @@ def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, sh
                                 tooltip=folium.Tooltip(tip, style=TIP_CSS, sticky=True)).add_to(fg)
         fg.add_to(m)
 
-    m.get_root().html.add_child(folium.Element(_legend_html()))
+    m.get_root().html.add_child(folium.Element(_legend_html(show_depth, show_heat)))
     m.fit_bounds(SF_FIT)
     return m
 
