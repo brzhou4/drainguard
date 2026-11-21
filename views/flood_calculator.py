@@ -181,14 +181,17 @@ else:
 
     map_col, side_col = st.columns([2, 1])
     with map_col:
-        b1, b2, b3 = st.columns([2, 1, 1])
+        b1, b2, b3, b4 = st.columns([2, 1, 1, 1])
         basemap = b1.selectbox("Map style", list(BASEMAPS), index=list(BASEMAPS).index("Terrain shading (USGS)"),
                                key="fc_basemap")
         show_hot = b2.toggle("Deepest spots", value=True, key="fc_hot")
-        show_over = b3.toggle("Full drains", value=False, key="fc_over",
+        show_heat = b3.toggle("Heatmap", value=True, key="fc_heat",
+                              help="Like the Command Center risk heatmap: hotter = more and deeper water nearby")
+        show_over = b4.toggle("Full drains", value=False, key="fc_over",
                               help="Red dots: drains that got more water than they can take")
         try:
-            st_folium(render.flood_map(scn, basemap=basemap, show_hotspots=show_hot, show_overwhelmed=show_over),
+            st_folium(render.flood_map(scn, basemap=basemap, show_hotspots=show_hot, show_overwhelmed=show_over,
+                                      show_heat=show_heat),
                       key="flood-map", height=560, use_container_width=True, returned_objects=[])
         except Exception as e:
             st.error(f"Couldn't draw the map: {e}")
