@@ -23,7 +23,7 @@ def legend_html():
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None, radius_m=None):
-    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles="cartodbpositron")
+    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles="OpenStreetMap")
 
     if show_zone:
         zone = PROCESSED / "flood_zone.geojson"
