@@ -8,7 +8,7 @@ from src.alerts import send_push
 from src.data import (RESULTS_JSON, TIERS, all_drains, data_source, drains_with_status, load_volunteers, log_status,
                       now_str, setting)
 from src.geo import nearest_drains
-from src.maps import drain_map
+from src.maps import BASEMAPS, drain_map
 
 CITY_TOPIC = setting("CITY_TOPIC", "drainguard-city-demo")
 APP_URL = setting("APP_URL", "")
@@ -142,6 +142,9 @@ with list_col:
         st.toast(f"Sent {sent} volunteer alert(s)." if len(vols) else "No volunteers yet. Sign up on the Volunteer page.")
 
 with map_col:
+    basemap = st.segmented_control(
+        "Map style", list(BASEMAPS), default="Streets", key="basemap",
+        help="Topographic and terrain views show hills and low spots: water flows downhill to the low drains.") or "Streets"
     c0, c1, c2, c3 = st.columns(4)
     show_all = c0.toggle("All drains", value=True, help="Every mapped storm drain as a small gray dot")
     show_heat = c1.toggle("Risk heatmap", value=False)
@@ -158,5 +161,5 @@ with map_col:
         center, zoom, focus = None, 12, None
     st_folium(drain_map(view if len(view) else drains, show_heat, show_zone, show_nov18,
                         center=center, zoom=zoom, focus=focus,
-                        all_drains=all_drains() if show_all else None),
-              key=f"map-{focus}", height=560, use_container_width=True, returned_objects=[])
+                        all_drains=all_drains() if show_all else None, basemap=basemap),
+              key=f"map-{focus}-{basemap}", height=560, use_container_width=True, returned_objects=[])

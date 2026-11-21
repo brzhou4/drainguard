@@ -8,6 +8,21 @@ from src.data import CHECKED_COLOR, OTHER_DRAIN_COLOR, PROCESSED, TIER_COLORS
 
 SF_CENTER = (37.758, -122.44)
 
+# Free basemaps (no API key). USGS = official US Geological Survey National Map tiles.
+BASEMAPS = {
+    "Streets": dict(tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    attr="&copy; OpenStreetMap contributors", max_native_zoom=19),
+    "Topographic (USGS)": dict(tiles="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
+                               attr="USGS The National Map", max_native_zoom=16),
+    "Contour lines": dict(tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+                          attr="Map data &copy; OpenStreetMap contributors, SRTM | Style &copy; OpenTopoMap (CC-BY-SA)",
+                          max_native_zoom=17),
+    "Terrain shading (USGS)": dict(tiles="https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}",
+                                   attr="USGS The National Map: shaded relief from 3DEP elevation", max_native_zoom=16),
+    "Satellite": dict(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                      attr="Tiles &copy; Esri, Maxar, Earthstar Geographics", max_native_zoom=19),
+}
+
 
 def legend_html():
     items = "".join(
@@ -25,8 +40,14 @@ def legend_html():
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
-              radius_m=None, focus=None, all_drains=None):
-    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles="OpenStreetMap", prefer_canvas=True)
+              radius_m=None, focus=None, all_drains=None, basemap="Streets"):
+    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None, prefer_canvas=True, max_zoom=19)
+    b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
+    folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
+                     max_native_zoom=b["max_native_zoom"]).add_to(m)
+    if basemap == "Terrain shading (USGS)":  # add street labels on top of the shading
+        folium.TileLayer(tiles=BASEMAPS["Streets"]["tiles"], attr=BASEMAPS["Streets"]["attr"],
+                         name="Streets", opacity=0.35, max_zoom=19, max_native_zoom=19).add_to(m)
 
     # Every mapped drain as a small gray dot (one compact GeoJSON layer so 24k points stay fast).
     if all_drains is not None and len(all_drains):
