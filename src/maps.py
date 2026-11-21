@@ -101,7 +101,8 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
               radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None):
     # Canvas only when drawing 24k gray dots; SVG otherwise (more reliable inside Streamlit).
     m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None,
-                   prefer_canvas=all_drains is not None and len(all_drains) > 0, max_zoom=19)
+                   prefer_canvas=all_drains is not None and len(all_drains) > 0, max_zoom=19,
+                   width="100%", height="540px")
     m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
     b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
     folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,

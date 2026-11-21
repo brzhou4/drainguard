@@ -202,5 +202,4 @@ with map_col:
                         center=center, zoom=zoom, focus=focus,
                         all_drains=all_drains() if show_all else None, basemap=basemap,
                         hoods=neighborhoods_geojson() if show_hoods else None),
-              center=list(center or (37.758, -122.44)), zoom=zoom,
               key="main-map", height=560, use_container_width=True, returned_objects=[])
