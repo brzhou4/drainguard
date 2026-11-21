@@ -1,0 +1,31 @@
+asset_id,lat,lon,neighborhood,risk,rank,tier,reason,is_fake
+FAKE-1016,37.765274,-122.417785,Mission,0.93,1,Urgent,Flooded on 9 past storm days; downhill of a large drainage area.,True
+FAKE-1011,37.779308,-122.408122,South of Market,0.91,2,Urgent,Flooded on 8 past storm days; downhill of a large drainage area.,True
+FAKE-1026,37.752286,-122.494814,Sunset/Parkside,0.907,3,Urgent,Flooded on 2 past storm days; downhill of a large drainage area.,True
+FAKE-1005,37.77703,-122.402512,South of Market,0.904,4,Urgent,Flooded on 6 past storm days; downhill of a large drainage area.,True
+FAKE-1029,37.758787,-122.409684,Mission,0.873,5,Urgent,Clogged-drain reports on 4 past storm days; low spot.,True
+FAKE-1020,37.729002,-122.428042,Excelsior,0.725,6,Urgent,Flooded on 9 past storm days; in the SFPUC flood zone.,True
+FAKE-1021,37.724593,-122.423399,Excelsior,0.716,7,Urgent,Clogged-drain reports on 6 past storm days; low spot.,True
+FAKE-1023,37.744996,-122.499184,Sunset/Parkside,0.673,8,Urgent,Flooded on 5 past storm days; downhill of a large drainage area.,True
+FAKE-1028,37.722788,-122.432758,Excelsior,0.671,9,Urgent,Flooded on 8 past storm days; downhill of a large drainage area.,True
+FAKE-1010,37.731893,-122.389698,Bayview Hunters Point,0.621,10,Urgent,Clogged-drain reports on 9 past storm days; low spot.,True
+FAKE-1006,37.745237,-122.494146,Sunset/Parkside,0.602,11,Urgent,Flooded on 7 past storm days; in the SFPUC flood zone.,True
+FAKE-1012,37.753086,-122.499176,Sunset/Parkside,0.592,12,Urgent,Clogged-drain reports on 8 past storm days; low spot.,True
+FAKE-1001,37.729388,-122.395304,Bayview Hunters Point,0.591,13,Urgent,Flooded on 5 past storm days; downhill of a large drainage area.,True
+FAKE-1003,37.718709,-122.427215,Excelsior,0.56,14,Urgent,Flooded on 2 past storm days; in the SFPUC flood zone.,True
+FAKE-1004,37.718595,-122.431347,Excelsior,0.533,15,Urgent,Flooded on 4 past storm days; downhill of a large drainage area.,True
+FAKE-1024,37.76232,-122.414431,Mission,0.515,16,Urgent,Clogged-drain reports on 6 past storm days; low spot.,True
+FAKE-1015,37.73508,-122.384664,Bayview Hunters Point,0.489,17,Urgent,Clogged-drain reports on 3 past storm days; low spot.,True
+FAKE-1017,37.7806,-122.398356,South of Market,0.482,18,Urgent,Clogged-drain reports on 2 past storm days; low spot.,True
+FAKE-1022,37.729838,-122.425807,Excelsior,0.481,19,Urgent,Clogged-drain reports on 5 past storm days; low spot.,True
+FAKE-1013,37.768044,-122.420569,Mission,0.477,20,Urgent,Flooded on 7 past storm days; downhill of a large drainage area.,True
+FAKE-1009,37.739339,-122.418019,Bernal Heights,0.389,21,Urgent,Flooded on 5 past storm days; in the SFPUC flood zone.,True
+FAKE-1027,37.745794,-122.41164,Bernal Heights,0.376,22,Urgent,Flooded on 8 past storm days; downhill of a large drainage area.,True
+FAKE-1018,37.739266,-122.413669,Bernal Heights,0.331,23,Urgent,Clogged-drain reports on 2 past storm days; low spot.,True
+FAKE-1008,37.743165,-122.415869,Bernal Heights,0.237,24,Urgent,Clogged-drain reports on 9 past storm days; low spot.,True
+FAKE-1025,37.758248,-122.415085,Mission,0.235,25,Urgent,Flooded on 7 past storm days; downhill of a large drainage area.,True
+FAKE-1019,37.763219,-122.472448,Inner Sunset,0.18,26,High,Flooded on 8 past storm days; in the SFPUC flood zone.,True
+FAKE-1014,37.772344,-122.445868,Haight Ashbury,0.154,27,High,Flooded on 9 past storm days; downhill of a large drainage area.,True
+FAKE-1000,37.775374,-122.448262,Haight Ashbury,0.149,28,High,Flooded on 3 past storm days; in the SFPUC flood zone.,True
+FAKE-1002,37.757531,-122.416482,Mission,0.142,29,High,Flooded on 3 past storm days; in the SFPUC flood zone.,True
+FAKE-1007,37.731573,-122.395247,Bayview Hunters Point,0.113,30,High,Flooded on 5 past storm days; in the SFPUC flood zone.,True

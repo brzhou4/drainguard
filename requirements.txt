@@ -1,0 +1,12 @@
+pandas
+numpy
+geopandas
+shapely
+scikit-learn
+requests
+folium
+streamlit
+streamlit-folium
+qrcode
+python-dotenv
+pyarrow
