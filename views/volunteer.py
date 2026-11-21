@@ -10,9 +10,21 @@ from src.geo import geocode_sf, in_sf, nearest_drains
 from src.i18n import LANGS, t
 from src.maps import drain_map
 
-# ---------- Language ----------
-lang = st.segmented_control("Language", list(LANGS), default="en", format_func=LANGS.get,
-                            label_visibility="collapsed", key="lang") or "en"
+# ---------- Language: one small button in the top-right corner; each tap moves to the next language ----------
+_ORDER = list(LANGS)
+if st.session_state.get("lang") not in LANGS:
+    st.session_state["lang"] = "en"
+
+
+def _next_lang():
+    i = _ORDER.index(st.session_state["lang"])
+    st.session_state["lang"] = _ORDER[(i + 1) % len(_ORDER)]
+
+
+lang = st.session_state["lang"]
+with st.container(horizontal=True, horizontal_alignment="right"):
+    st.button(LANGS[lang], icon=":material/translate:", type="tertiary", on_click=_next_lang, key="lang_btn",
+              help=" → ".join(LANGS.values()))
 
 
 def T(key, **kw):
