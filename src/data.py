@@ -1,4 +1,4 @@
-"""Load and save the app's data files (all local CSVs, no database)."""
+"""Load the drain rankings and read/write volunteer data (via src/store.py: Supabase or local CSVs)."""
 import os
 from datetime import datetime
 from pathlib import Path
@@ -6,11 +6,11 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from src import store
+
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 DRAINS_CSV = PROCESSED / "drain_scores.csv"
-STATUS_CSV = PROCESSED / "drain_status.csv"
-VOLUNTEERS_CSV = PROCESSED / "volunteers.csv"
 RESULTS_CSV = PROCESSED / "results_table.csv"
 RESULTS_JSON = PROCESSED / "results.json"
 
@@ -19,7 +19,14 @@ TIERS = ["Urgent", "High", "Watch"]
 TIER_COLORS = {"Urgent": "#7B2CBF", "High": "#D64545", "Watch": "#E8892B"}  # purple, red, orange
 CHECKED_COLOR = "#2E9E5B"   # green = checked
 OTHER_DRAIN_COLOR = "#9AA0A6"  # gray = every other mapped drain
-STATUSES = ["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"]
+EN_ROUTE = "Volunteer en route"
+STATUSES = ["Not checked", EN_ROUTE, "Checked - clear", "Blocked", "Blocked - reported to 311", "Couldn't reach"]
+DONE_STATUSES = {"Checked - clear", "Blocked", "Blocked - reported to 311"}  # someone actually looked at it
+OPEN_STATUSES = {"Not checked", "Couldn't reach"}                            # still needs a visit
+ROUND_ID = "__ROUND__"   # a status row with this asset_id marks "new check round started" (resets all checks)
+VOLUNTEER = "Volunteer"  # volunteers are anonymous: every report is logged under this label
+EN_ROUTE_BUFFER_MIN = 20  # an en-route drain stays hidden for the walk there + this many minutes
+CONDITIONS = ["Leaves", "Trash", "Sediment / dirt", "Broken or missing grate", "Standing water", "Other"]
 
 # SF 311 "Flooding, sewer and water leak issues" form. The city site can't be embedded (it blocks framing),
 # so we open it in a new tab with the category picked, the description written and the drain's location set.
@@ -76,6 +83,19 @@ NEIGHBORHOOD_CENTERS = {
 
 def now_str():
     return datetime.now(TZ).strftime("%Y-%m-%d %H:%M")
+
+
+def stamp():
+    """Timestamp stored with each row (to the millisecond, so a new round cleanly splits before/after)."""
+    return datetime.now(TZ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+
+def now():
+    return pd.Timestamp(datetime.now(TZ).replace(tzinfo=None))
+
+
+def _ts(series):
+    return pd.to_datetime(series, errors="coerce")
 
 
 def setting(name, default=""):
@@ -187,48 +207,171 @@ def flood_cells():
         return pd.DataFrame()
 
 
+def check_ttl_days():
+    """A check counts as current for this many days (setting CHECK_TTL_DAYS, default 7)."""
+    try:
+        return max(1, int(setting("CHECK_TTL_DAYS", "7")))
+    except ValueError:
+        return 7
+
+
+def round_start():
+    """When the crew last started a new check round, or None."""
+    s = store.read("drain_status")
+    t = _ts(s.loc[s["asset_id"] == ROUND_ID, "time"]).dropna()
+    return t.max() if len(t) else None
+
+
+def check_cutoff():
+    """Checks logged before this time no longer count (older than the TTL, or before the current round)."""
+    cutoff = now() - pd.Timedelta(days=check_ttl_days())
+    r = round_start()
+    return max(cutoff, r) if r is not None else cutoff
+
+
+def start_new_round(by="City crew"):
+    store.append("drain_status", {"asset_id": ROUND_ID, "status": "Round start", "volunteer": by, "time": stamp()})
+
+
 def load_status():
-    if not STATUS_CSV.exists():
-        return pd.DataFrame(columns=["asset_id", "status", "volunteer", "time"])
-    return pd.read_csv(STATUS_CSV, dtype=str)
+    """Every drain report, without round markers, with a parsed time column 't'."""
+    s = store.read("drain_status")
+    s = s[s["asset_id"] != ROUND_ID].copy()
+    s["t"] = _ts(s["time"])
+    return s
+
+
+def current_reports():
+    """Reports that still count: newer than the TTL and after the current round started."""
+    s = load_status()
+    r = round_start()
+    keep = s["t"] >= now() - pd.Timedelta(days=check_ttl_days())
+    if r is not None:
+        keep &= s["t"] > r
+    return s[keep]
 
 
 def latest_status():
-    """One row per drain: its most recent status."""
-    s = load_status()
+    """One row per drain: its current status, who/when, and how many failed tries since the last real check."""
+    s = current_reports()
+    cols = ["asset_id", "status", "volunteer", "time", "condition", "note", "photo", "attempts"]
     if s.empty:
-        return s
-    return s.groupby("asset_id", as_index=False).last()
+        return pd.DataFrame(columns=cols)
+    out = []
+    for _, g in s.sort_values("t", kind="stable").groupby("asset_id", sort=False):
+        last = g.iloc[-1].to_dict()
+        tail = 0  # failed tries since the last non-"Couldn't reach" report
+        for st_ in reversed(g["status"].tolist()):
+            if st_ != "Couldn't reach":
+                break
+            tail += 1
+        last["attempts"] = tail
+        out.append(last)
+    return pd.DataFrame(out)[cols]
 
 
 def drains_with_status():
-    d = load_drains()
-    s = latest_status()
+    """Every ranked drain with its current status. Open drains someone is walking to show as EN_ROUTE,
+    with 'en_route_until' and 'en_route_token' (the walker's private token, never shown)."""
+    d = load_drains().copy()
+    s = latest_status().rename(columns={"volunteer": "checked_by", "time": "checked_at"})
+    extra = ["status", "checked_by", "checked_at", "condition", "note", "photo", "attempts"]
     if s.empty:
-        d["status"], d["checked_by"], d["checked_at"] = "Not checked", "", ""
-        return d
-    s = s.rename(columns={"volunteer": "checked_by", "time": "checked_at"})
-    d = d.merge(s[["asset_id", "status", "checked_by", "checked_at"]], on="asset_id", how="left")
-    d["status"] = d["status"].fillna("Not checked")
-    d[["checked_by", "checked_at"]] = d[["checked_by", "checked_at"]].fillna("")
+        for c in extra:
+            d[c] = ""
+        d["status"], d["attempts"] = "Not checked", 0
+    else:
+        d = d.merge(s[["asset_id"] + extra], on="asset_id", how="left")
+        d["status"] = d["status"].fillna("Not checked")
+        d["attempts"] = d["attempts"].fillna(0).astype(int)
+        d[extra[1:-1]] = d[extra[1:-1]].fillna("")
+    d["en_route_until"], d["en_route_token"] = "", ""
+    c = active_claims()
+    if len(c):
+        c = c.sort_values("until").drop_duplicates("asset_id", keep="last").set_index("asset_id")
+        hit = d["asset_id"].isin(c.index) & d["status"].isin(OPEN_STATUSES)
+        d.loc[hit, "en_route_until"] = d.loc[hit, "asset_id"].map(c["until"])
+        d.loc[hit, "en_route_token"] = d.loc[hit, "asset_id"].map(c["token"])
+        d.loc[hit, "status"] = EN_ROUTE
     return d
 
 
-def log_status(asset_id, status, volunteer):
-    PROCESSED.mkdir(parents=True, exist_ok=True)
-    row = pd.DataFrame([{"asset_id": asset_id, "status": status, "volunteer": volunteer, "time": now_str()}])
-    row.to_csv(STATUS_CSV, mode="a", header=not STATUS_CSV.exists(), index=False)
+def log_status(asset_id, status, volunteer=VOLUNTEER, token="", condition="", note="", photo=""):
+    store.append("drain_status", {"asset_id": asset_id, "status": status, "volunteer": volunteer,
+                                  "volunteer_token": token, "time": stamp(), "condition": condition,
+                                  "note": note, "photo": photo})
+    if token:
+        release_claim(asset_id, token)
 
 
+# ---------- En route: a volunteer is walking to a drain ----------
+def active_claims():
+    c = store.read("claims")
+    if c.empty:
+        return c
+    return c[_ts(c["until"]) > now()]
+
+
+def claim(asset_id, token, walk_min):
+    """Hide this drain from everyone else for the walk there plus EN_ROUTE_BUFFER_MIN minutes."""
+    release_claim(asset_id, token)
+    until = now() + pd.Timedelta(minutes=int(walk_min) + EN_ROUTE_BUFFER_MIN)
+    store.append("claims", {"asset_id": asset_id, "token": token, "until": until.strftime("%Y-%m-%d %H:%M:%S")})
+    return until
+
+
+def release_claim(asset_id, token):
+    store.delete("claims", asset_id=asset_id, token=token)
+
+
+def open_for_volunteers(drains, token=None):
+    """Urgent/High drains that still need a visit. Drains someone else is walking to are left out;
+    drains this volunteer is walking to stay in."""
+    d = drains[drains["tier"].isin(["Urgent", "High"])]
+    mine = (d["status"] == EN_ROUTE) & (d["en_route_token"] == (token or "\0"))
+    return d[d["status"].isin(OPEN_STATUSES) | mine]
+
+
+def visible_on_maps(drains, token=None):
+    """Drains to draw on a map: everything except drains someone else is walking to."""
+    hidden = (drains["status"] == EN_ROUTE) & (drains["en_route_token"] != (token or "\0"))
+    return drains[~hidden]
+
+
+# ---------- Volunteers (anonymous: no names, just a private token) ----------
 def load_volunteers():
-    if not VOLUNTEERS_CSV.exists():
-        return pd.DataFrame(columns=["name", "topic", "lat", "lon", "radius_m"])
-    return pd.read_csv(VOLUNTEERS_CSV)
+    v = store.read("volunteers")
+    if len(v):
+        v.loc[v["token"] == "", "token"] = v.loc[v["token"] == "", "topic"]  # rows from before tokens existed
+        for c in ("lat", "lon", "radius_m"):
+            v[c] = pd.to_numeric(v[c], errors="coerce")
+        v = v.drop_duplicates("token", keep="last")
+    return v
 
 
-def save_volunteer(name, topic, lat, lon, radius_m):
-    PROCESSED.mkdir(parents=True, exist_ok=True)
+def get_volunteer(token):
+    if not token:
+        return None
     v = load_volunteers()
-    v = v[v["name"] != name]  # re-signing up replaces the old entry
-    v = pd.concat([v, pd.DataFrame([{"name": name, "topic": topic, "lat": lat, "lon": lon, "radius_m": radius_m}])])
-    v.to_csv(VOLUNTEERS_CSV, index=False)
+    hit = v[v["token"] == token]
+    return hit.iloc[-1] if len(hit) else None
+
+
+def save_volunteer(lat, lon, radius_m, lang="en", adult="yes", token=None, topic=None):
+    """Create (or, with token, update) an anonymous volunteer. Returns the private token."""
+    import secrets
+    token = token or secrets.token_urlsafe(9)
+    topic = topic or f"drainguard-vol-{secrets.token_hex(5)}"
+    store.delete("volunteers", token=token)
+    store.append("volunteers", {"token": token, "topic": topic, "lat": round(float(lat), 6),
+                                "lon": round(float(lon), 6), "radius_m": int(radius_m), "lang": lang,
+                                "adult": adult, "created": stamp()})
+    return token
+
+
+def volunteer_stats(token):
+    """(drains this volunteer has checked ever, checked in the current round)."""
+    s = load_status()
+    mine = s[(s["volunteer_token"] == token) & s["status"].isin(DONE_STATUSES)]
+    current = set(current_reports().index)
+    return len(mine), int(mine.index.isin(current).sum())

@@ -6,7 +6,7 @@ from branca.element import MacroElement
 from jinja2 import Template
 from folium.plugins import HeatMap
 
-from src.data import CHECKED_COLOR, OTHER_DRAIN_COLOR, PROCESSED, TIER_COLORS
+from src.data import CHECKED_COLOR, DONE_STATUSES, OTHER_DRAIN_COLOR, PROCESSED, TIER_COLORS
 
 SF_CENTER = (37.758, -122.44)
 
@@ -98,7 +98,9 @@ def legend_html():
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
-              radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None):
+              radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None,
+              stops=None):
+    """stops: optional DataFrame with lat, lon, stop (walking order) drawn as numbered pins + a path from `you`."""
     # Canvas only when drawing 24k gray dots; SVG otherwise (more reliable inside Streamlit).
     m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None,
                    prefer_canvas=all_drains is not None and len(all_drains) > 0, max_zoom=19,
@@ -192,7 +194,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
         HeatMap(drains[["lat", "lon", "risk"]].values.tolist(), radius=25, blur=20, name="Risk").add_to(m)
 
     for _, r in drains.iterrows():
-        checked = r.get("status", "Not checked") != "Not checked"
+        checked = r.get("status", "Not checked") in DONE_STATUSES
         color = CHECKED_COLOR if checked else TIER_COLORS.get(r["tier"], OTHER_DRAIN_COLOR)
         folium.CircleMarker(
             (r["lat"], r["lon"]), radius={"Urgent": 9, "High": 7}.get(r["tier"], 5),
@@ -221,6 +223,16 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
             r = hit.iloc[0]
             folium.Marker((r["lat"], r["lon"]), tooltip=f"Selected: #{int(r['rank'])}",
                           icon=folium.Icon(color="black", icon="star")).add_to(m)
+
+    if stops is not None and len(stops):
+        path = ([list(you)] if you else []) + stops[["lat", "lon"]].values.tolist()
+        folium.PolyLine(path, color="#1F3A5F", weight=3, opacity=0.7, dash_array="6 6").add_to(m)
+        for r in stops.itertuples():
+            folium.Marker((float(r.lat), float(r.lon)), tooltip=f"Stop {int(r.stop)}", icon=folium.DivIcon(
+                icon_size=(26, 26), icon_anchor=(13, 13),
+                html=(f'<div style="width:26px;height:26px;border-radius:50%;background:#1F3A5F;color:#fff;'
+                      f'border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);text-align:center;'
+                      f'font:700 13px/22px Poppins,sans-serif">{int(r.stop)}</div>'))).add_to(m)
 
     if you:
         folium.Marker(you, tooltip="You", icon=folium.Icon(color="blue", icon="user")).add_to(m)

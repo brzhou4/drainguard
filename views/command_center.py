@@ -5,32 +5,28 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from src.alerts import send_push
-from src.data import (RESULTS_JSON, TIERS, all_drains, data_source, drains_with_status, load_volunteers, neighborhoods_geojson,
-                      log_status,
-                      now_str, setting)
+from src.data import (DONE_STATUSES, RESULTS_JSON, STATUSES, TIERS, all_drains, check_cutoff, check_ttl_days,
+                      data_source, drains_with_status, load_volunteers, log_status, neighborhoods_geojson, now_str,
+                      open_for_volunteers, round_start, setting, start_new_round, visible_on_maps)
+from src.store import backend
 from src.geo import nearest_drains
 from src.maps import BASEMAPS, drain_map
-from src.weather import get_forecast, storm_status
+from src.weather import current_storm
 
 CITY_TOPIC = setting("CITY_TOPIC", "drainguard-city-demo")
 APP_URL = setting("APP_URL", "")
 
 drains = drains_with_status()
 
-@st.cache_data(ttl=1800, show_spinner=False)
-def _forecast():
-    return get_forecast()
-
-
 # ---------- Storm banner (the first thing anyone needs to know) ----------
-storm = storm_status(_forecast())
+storm = current_storm()  # same storm level (and demo override) as the Volunteer page
 STYLE = {  # background, text, label
     "storm": ("#4A1D7A", "#FFFFFF", "STORM ALERT"),
     "watch": ("#B3261E", "#FFFFFF", "RAIN WATCH"),
     "clear": ("#1E6B3A", "#FFFFFF", "ALL CLEAR"),
     "unknown": ("#5F6B7A", "#FFFFFF", "FORECAST"),
 }[storm["level"]]
-unchecked = int(((drains["tier"] == "Urgent") & (drains["status"] == "Not checked")).sum())
+unchecked = int(((drains["tier"] == "Urgent") & ~drains["status"].isin(DONE_STATUSES)).sum())
 action = (f"{unchecked} Urgent drains still need checking before the rain." if storm["level"] in ("storm", "watch")
           else f"{unchecked} Urgent drains not yet checked.")
 st.markdown(
@@ -67,7 +63,7 @@ elif source == "live" and RESULTS_JSON.exists():
         pass
 
 if send:
-    top10 = drains[(drains["tier"] == "Urgent") & (drains["status"] == "Not checked")].head(10)
+    top10 = drains[(drains["tier"] == "Urgent") & ~drains["status"].isin(DONE_STATUSES)].head(10)
     if top10.empty:
         st.toast("No unchecked Urgent drains to send.")
     else:
@@ -79,7 +75,7 @@ if send:
 
 # ---------- KPI tiles ----------
 urgent = drains[drains["tier"] == "Urgent"]
-checked_urgent = (urgent["status"] != "Not checked").sum()
+checked_urgent = urgent["status"].isin(DONE_STATUSES).sum()
 result_text = "pending"
 if RESULTS_JSON.exists():
     try:
@@ -94,7 +90,7 @@ k3.metric("Volunteers", len(load_volunteers()))
 k4.metric("Nov 18 test", result_text, help="Share of our 25 Urgent drains (picked with data from before Nov 18) that were at a real flood spot on Nov 18. Random drains: about 19%. See Evidence.")
 
 # ---------- Filters (full width, above map + list) ----------
-STATUSES_ALL = ["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"]
+STATUSES_ALL = STATUSES
 f1, f2, f3 = st.columns([1.2, 1, 1.8])
 with f1:
     tier_pick = st.pills("Tier", TIERS, selection_mode="multi", default=["Urgent", "High"], key="f_tier")
@@ -109,7 +105,7 @@ if hood_pick != "All neighborhoods":
     view = view[view["neighborhood"] == hood_pick]
 view = view[view["status"].isin(status_pick or STATUSES_ALL)].reset_index(drop=True)
 filter_key = f"{sorted(tier_pick or TIERS)}|{hood_pick}|{sorted(status_pick or STATUSES_ALL)}"
-n_checked = int((drains["status"] != "Not checked").sum())
+n_checked = int(drains["status"].isin(DONE_STATUSES).sum())
 st.caption(f"Showing **{len(view)}** of {len(drains)} priority drains · {n_checked} checked so far "
            "(statuses come from this app's buttons; the city does not publish drain-cleaning records)")
 
@@ -161,20 +157,40 @@ with list_col:
     st.download_button("Download crew route sheet (CSV)", view.to_csv(index=False).encode(),
                        "drainguard_route_sheet.csv", "text/csv", use_container_width=True)
 
-    if st.button("Notify nearby volunteers", use_container_width=True):
+    storm_now = storm["level"] == "storm"
+    if st.button("Notify nearby volunteers", use_container_width=True, disabled=storm_now,
+                 help="Paused during a storm: volunteers should stay inside." if storm_now else
+                 "Push each volunteer the 3 closest drains that still need a visit"):
         vols = load_volunteers()
-        open_drains = drains[drains["tier"].isin(["Urgent", "High"]) & (drains["status"] == "Not checked")]
         sent = 0
         for _, v in vols.iterrows():
+            open_drains = open_for_volunteers(drains, v["token"])
             near = nearest_drains(open_drains, v["lat"], v["lon"], v["radius_m"], limit=3)
             if near.empty:
                 continue
             body = "\n".join(f"#{int(r['rank'])} {r['tier']} · {int(r['distance_m'])} m ({r['walk_min']} min walk)"
                              for _, r in near.iterrows())
             body += "\nLook and report only. Never clear drains in a storm."
-            sent += send_push(v["topic"], "DrainGuard: drains near you", body, tags="droplet",
-                              click_url=APP_URL or None)
+            link = f"{APP_URL.rstrip('/')}/volunteer?v={v['token']}" if APP_URL else None
+            sent += send_push(v["topic"], "DrainGuard: drains near you", body, tags="droplet", click_url=link)
         st.toast(f"Sent {sent} volunteer alert(s)." if len(vols) else "No volunteers yet. Sign up on the Volunteer page.")
+    if storm_now:
+        st.caption("Volunteer alerts are paused while the storm is on. Crew alerts still work.")
+
+    # ---------- Check rounds: old checks stop counting ----------
+    rs = round_start()
+    st.caption(f"Checks count for {check_ttl_days()} days"
+               + (f" or since the round started {rs:%b %d %H:%M}" if rs is not None else "")
+               + f". Counting from {check_cutoff():%b %d %H:%M}. Saved to: "
+               + ("Supabase" if backend() == "supabase" else "local files (reset on restart)") + "."
+               + " Drains a volunteer is walking to are hidden from the map until they report or time runs out.")
+    with st.popover("Start a new check round", use_container_width=True,
+                    help="Use before a new storm: every drain goes back to Not checked. History is kept."):
+        st.write("Every drain goes back to **Not checked** for this storm. Past reports stay in the history.")
+        if st.button("Yes, start a new round", type="primary", use_container_width=True):
+            start_new_round()
+            st.toast("New check round started.", icon=":material/restart_alt:")
+            st.rerun()
 
 with map_col:
     basemap = st.segmented_control(
@@ -198,7 +214,7 @@ with map_col:
         center, zoom, focus = (float(view["lat"].mean()), float(view["lon"].mean())), 14, None
     else:
         center, zoom, focus = None, 12, None
-    st_folium(drain_map(view, show_heat, show_zone, show_nov18,
+    st_folium(drain_map(visible_on_maps(view), show_heat, show_zone, show_nov18,
                         center=center, zoom=zoom, focus=focus,
                         all_drains=all_drains() if show_all else None, basemap=basemap,
                         hoods=neighborhoods_geojson() if show_hoods else None),

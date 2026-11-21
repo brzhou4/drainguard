@@ -5,3 +5,7 @@ __pycache__/
 data/raw/*
 !data/raw/.gitkeep
 *.parquet
+data/processed/photos/
+data/processed/drain_status.csv
+data/processed/volunteers.csv
+data/processed/claims.csv
