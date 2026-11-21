@@ -45,7 +45,11 @@ class _MapScript(MacroElement):
           }
           function lbl(){ map.getContainer().classList.toggle('hide-labels', map.getZoom() < 14); }
           map.on('zoomend', lbl); lbl();
-          [200, 800].forEach(function(t){ setTimeout(function(){ map.invalidateSize(); lbl(); }, t); });
+          function frame(){
+            {% if this.view %}map.setView({{ this.view[0] }}, {{ this.view[1] }});
+            {% else %}map.fitBounds([[37.708, -122.515], [37.812, -122.357]]);{% endif %}
+          }
+          [200, 800].forEach(function(t){ setTimeout(function(){ map.invalidateSize(); frame(); lbl(); }, t); });
         })();
         {% endmacro %}
     """)
@@ -225,5 +229,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
     m.get_root().html.add_child(folium.Element(legend_html()))
     # Only show neighborhood names when zoomed in enough that they don't pile up.
     # (Attached to the map itself so streamlit-folium includes it.)
-    _MapScript().add_to(m)
+    ms = _MapScript()
+    ms.view = [list(center), zoom] if center is not None else None
+    ms.add_to(m)
     return m
