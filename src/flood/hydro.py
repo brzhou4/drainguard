@@ -74,15 +74,18 @@ def _pad(a, value):
     return np.pad(a, 1, mode="constant", constant_values=value)
 
 
-def fill_depressions(z, land=None):
+def fill_depressions(z, land=None, sinks=None):
     """Priority-flood fill (Barnes et al. 2014). Returns filled elevations (NaN on non-active cells).
 
-    Active = land & finite & z > 0; non-active cells and the grid edge are outlets."""
+    Active = land & finite & z > 0; non-active cells and the grid edge are outlets. `sinks` (bool mask)
+    marks extra active cells that act as outlets (culvert intakes at the bottom of breached pits)."""
     z = np.asarray(z, float)
     rows, cols = z.shape
     act = _pad(_active_mask(z, land), False)
     w = cols + 2
     seeds = act & ~ndimage.binary_erosion(act, structure=np.ones((3, 3), bool), border_value=0)
+    if sinks is not None:
+        seeds |= act & _pad(np.asarray(sinks, bool), False)
     zf = _pad(np.where(act[1:-1, 1:-1], z, 0.0), 0.0).ravel().tolist()
     closed = (~act).ravel().tolist()
     filled = [float("nan")] * len(zf)
@@ -116,7 +119,7 @@ def fill_depressions(z, land=None):
     return out
 
 
-def _flow_directions(filled, dx, dy):
+def _flow_directions(filled, dx, dy, sinks=None):
     """D8 on the filled surface + BFS flat resolution. Returns (rec, dist) as flat arrays:
     rec = downstream flat index, -1 = outlet, -2 = not active; dist = BFS steps across a flat."""
     filled = np.asarray(filled, float)
@@ -125,6 +128,8 @@ def _flow_directions(filled, dx, dy):
     w = cols + 2
     fp = _pad(np.where(act, filled, np.inf), np.inf)
     seeds = act & ~ndimage.binary_erosion(act, structure=np.ones((3, 3), bool), border_value=0)
+    if sinks is not None:
+        seeds |= act & np.asarray(sinks, bool)
     best = np.zeros((rows, cols))
     bestk = np.full((rows, cols), -1, np.int64)
     f = np.where(act, filled, -np.inf)
@@ -267,18 +272,42 @@ def depression_ids(z, filled, cell_area_m2=1.0):
     return labels, deps
 
 
-def _prepare(z, act, dx, dy):
+def breach_deep_pits(z, act, max_pond_depth_m=2.0, max_iter=50):
+    """Fill, then turn every pit deeper than max_pond_depth_m into a culvert sink (its lowest cell becomes an
+    outlet) and refill, until no remaining pit is deeper. Returns (filled, sinks mask, n_breached)."""
+    sinks = np.zeros(z.shape, bool)
+    filled = fill_depressions(z, act)
+    if max_pond_depth_m is None or not np.isfinite(max_pond_depth_m):
+        return filled, sinks, 0
+    for _ in range(max_iter):
+        with np.errstate(invalid="ignore"):
+            dep = act & (filled > z)
+        labels, nd = ndimage.label(dep, structure=np.ones((3, 3), int))
+        if not nd:
+            break
+        idx = np.arange(1, nd + 1)
+        deep = idx[np.asarray(ndimage.maximum(np.where(dep, filled - z, 0.0), labels, idx)) > max_pond_depth_m]
+        if not deep.size:
+            break
+        for r, c in ndimage.minimum_position(np.where(dep, z, np.inf), labels, deep):
+            sinks[r, c] = True
+        filled = fill_depressions(z, act, sinks)
+    return filled, sinks, int(sinks.sum())
+
+
+def _prepare(z, act, dx, dy, max_pond_depth_m=2.0):
     """Cap-independent terrain topology (cached per grid)."""
-    key = hashlib.blake2b(z.tobytes() + act.tobytes() + np.float64([dx, dy]).tobytes(), digest_size=16).hexdigest()
+    key = hashlib.blake2b(z.tobytes() + act.tobytes() + np.float64([dx, dy, -1.0 if max_pond_depth_m is None
+                          else max_pond_depth_m]).tobytes(), digest_size=16).hexdigest()
     if key in _CACHE:
         return _CACHE[key]
     rows, cols = z.shape
     tm = {}
     t = time.perf_counter()
-    filled = fill_depressions(z, act)
+    filled, sinks, n_breached = breach_deep_pits(z, act, max_pond_depth_m)
     tm["fill_s"] = time.perf_counter() - t
     t = time.perf_counter()
-    rec, dist = _flow_directions(filled, dx, dy)
+    rec, dist = _flow_directions(filled, dx, dy, sinks)
     tm["d8_s"] = time.perf_counter() - t
     t = time.perf_counter()
     zf, ff = z.ravel(), filled.ravel()
@@ -312,6 +341,7 @@ def _prepare(z, act, dx, dy):
     tm["graph_s"] = time.perf_counter() - t
     t = time.perf_counter()
     # per-level routing structures
+    is_sink = sinks.ravel()[normal]
     lv_sorted = level[order]
     bounds = np.flatnonzero(np.r_[True, lv_sorted[1:] != lv_sorted[:-1], True])
     levels = []
@@ -319,11 +349,13 @@ def _prepare(z, act, dx, dy):
         nodes = np.sort(order[a:b])                       # ordinary nodes first, then ponds
         tgt = down[nodes]
         bay = tgt < 0
+        culv = np.flatnonzero(bay & (nodes < nn) & is_sink[np.minimum(nodes, nn - 1)]) if nn else np.zeros(0, int)
         inn = np.flatnonzero(~bay)
+        bay[culv] = False
         perm = inn[np.argsort(tgt[inn], kind="stable")]
         ts = tgt[perm]
         st = np.flatnonzero(np.r_[True, ts[1:] != ts[:-1]]) if ts.size else np.zeros(0, np.int64)
-        levels.append(dict(nodes=nodes, mn=int(np.searchsorted(nodes, nn)), bay=np.flatnonzero(bay),
+        levels.append(dict(nodes=nodes, mn=int(np.searchsorted(nodes, nn)), bay=np.flatnonzero(bay), culv=culv,
                            perm=perm, starts=st, utgt=ts[st] if ts.size else ts))
     # slope along the flow direction (ordinary cells), for Manning
     rn = rec[normal]
@@ -348,15 +380,18 @@ def _prepare(z, act, dx, dy):
     tm["levels_s"] = time.perf_counter() - t
     prep = dict(filled=filled, rec=rec, labels=labels, n_dep=nd, normal=normal, dcells=dcells, dlab=lab[dcells] - 1,
                 n_normal=nn, down=down, levels=levels, slope=slope, tab=tab, vfull=vfull, vthr=vthr,
-                n_levels=len(levels), timings=tm)
+                n_levels=len(levels), timings=tm, sinks=sinks, n_breached=n_breached)
     if len(_CACHE) > 4:
         _CACHE.clear()
     _CACHE[key] = prep
     return prep
 
 
-def simulate(grid, cap_m3s, rain, runoff_coeff=0.85, n_manning=0.016, progress=None):
-    """Route a rain event over the grid. Returns a FloodResult (see module docstring for the model)."""
+def simulate(grid, cap_m3s, rain, runoff_coeff=0.85, n_manning=0.016, progress=None, max_pond_depth_m=2.0):
+    """Route a rain event over the grid. Returns a FloodResult (see module docstring for the model).
+
+    max_pond_depth_m: pits whose full depth exceeds this are breached (treated as drained by a culvert /
+    reservoir: no storage, water reaching their bottom leaves as "drained"). None = keep every pit."""
     t_start = time.perf_counter()
     report = progress if callable(progress) else (lambda f: None)
     z = np.asarray(grid.z, float)
@@ -370,7 +405,7 @@ def simulate(grid, cap_m3s, rain, runoff_coeff=0.85, n_manning=0.016, progress=N
     dt = float(rain.step_min) * 60.0
     rdt = rates / 1000.0 / 3600.0 * dt                    # m of rain per step
     report(0.02)
-    prep = _prepare(z, act, dx, dy)
+    prep = _prepare(z, act, dx, dy, max_pond_depth_m)
     report(0.3)
     nn, nd = prep["n_normal"], prep["n_dep"]
     normal, dcells, dlab, tab = prep["normal"], prep["dcells"], prep["dlab"], prep["tab"]
@@ -396,6 +431,7 @@ def simulate(grid, cap_m3s, rain, runoff_coeff=0.85, n_manning=0.016, progress=N
     s_max = np.zeros(nd)
     drained = 0.0
     to_bay = 0.0
+    culvert = 0.0
     vthr = prep["vthr"]
     fl = np.isfinite(vthr)
     vthr_cells, vthr_dep = vthr[fl] * area, tab["seg"][fl]
@@ -445,6 +481,8 @@ def simulate(grid, cap_m3s, rain, runoff_coeff=0.85, n_manning=0.016, progress=N
                 out[mn:] = spill
             if lv["bay"].size:
                 to_bay += float(out[lv["bay"]].sum())
+            if lv["culv"].size:
+                culvert += float(out[lv["culv"]].sum())
             if lv["perm"].size:
                 inflow[lv["utgt"]] += np.add.reduceat(out[lv["perm"]], lv["starts"], axis=0)
         if nd:
@@ -483,7 +521,7 @@ def simulate(grid, cap_m3s, rain, runoff_coeff=0.85, n_manning=0.016, progress=N
     timeline = [{"t_hr": round((i + 1) * dt / 3600.0, 4), "flooded_km2": float(flooded_km2[i]),
                  "ponded_m3": float(ponded_t[i])} for i in range(nt)]
     res = FloodResult(depth_m=depth.astype(np.float32), grid=grid, rain=rain, volume_rain_m3=rain_land,
-                      volume_runoff_m3=runoff, volume_drained_m3=drained,
+                      volume_runoff_m3=runoff, volume_drained_m3=drained + culvert,
                       volume_ponded_m3=float(ponded_t.max()) if nt else 0.0, volume_to_bay_m3=to_bay,
                       drains_overwhelmed=int(over_mask.sum()), timeline=timeline)
     res.peak_inflow_m3s = pin.reshape(rows, cols)
@@ -491,6 +529,8 @@ def simulate(grid, cap_m3s, rain, runoff_coeff=0.85, n_manning=0.016, progress=N
     res.overwhelmed_mask = over_mask.reshape(rows, cols)
     res.pond_labels = prep["labels"]
     res.volume_ponded_end_m3 = float(s_state.sum())
+    res.volume_culvert_m3 = culvert
+    res.n_breached_pits = prep["n_breached"]
     res.timings = dict(prep["timings"], total_s=time.perf_counter() - t_start, n_levels=prep["n_levels"],
                        n_ponds=nd)
     report(1.0)

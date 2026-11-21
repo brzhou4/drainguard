@@ -55,10 +55,10 @@ def _how_common(rp):
     if rp is None or (isinstance(rp, float) and (math.isnan(rp))):
         return "n/a"
     if math.isinf(rp):
-        return "Rarer than 1 in 1,000 yrs"
+        return "Over 1,000 yrs"
     if rp < 1:
         return "Several times a year"
-    return f"1 in {rp:,.0f} years" if rp >= 2 else "About yearly"
+    return f"1 in {rp:,.0f} yrs" if rp >= 2 else "About yearly"
 
 
 # ---------- page ----------
@@ -67,7 +67,7 @@ st.write("Estimates where water would pond across San Francisco for a storm, usi
          "every mapped storm drain's flow capacity, and NOAA rain statistics.")
 
 mode = st.segmented_control("Rain to model", ["Today's weather", "Past storm", "Enter rain yourself"],
-                            default="Enter rain yourself", key="fc_mode") or "Enter rain yourself"
+                            default="Enter rain yourself", required=True, key="fc_mode") or "Enter rain yourself"
 
 rain, rain_err = None, None
 try:
@@ -159,10 +159,14 @@ else:
     chance = s.get("annual_chance_pct")
     if chance is not None and not (isinstance(chance, float) and math.isnan(chance)):
         k2.caption(f"{chance:.0f}% chance in any year" if chance >= 1 else f"{chance:.1f}% chance in any year")
-    k3.metric("Flooded area", f"{s.get('flooded_acres', 0):,.0f} acres", help="Ground under 6 in of water or more")
-    k4.metric("Deepest water", f"{s.get('max_depth_in', 0):.0f} in")
-    k5.metric("Drains overwhelmed", f"{s.get('inlets_overwhelmed', 0):,} of {s.get('inlets_total', 0):,}",
+    k3.metric("Flooded acres", f"{s.get('flooded_acres', 0):,.0f}", help="Ground under 6 in of water or more")
+    k3.caption("6 in deep or more")
+    deep_in = float(s.get("max_depth_in", 0) or 0)
+    k4.metric("Deepest water", f"{deep_in:.0f} in" if deep_in < 36 else f"{deep_in / 12:.0f} ft",
+              help="Deepest spot is usually a low pocket in the terrain grid (pit, reservoir, construction site)")
+    k5.metric("Drains overwhelmed", f"{s.get('inlets_overwhelmed', 0):,}",
               help="Drains that got more water than they were built to take")
+    k5.caption(f"of {s.get('inlets_total', 0):,} mapped drains")
     if s.get("sentence") or comm.sentence:
         st.info(s.get("sentence") or comm.sentence, icon=":material/water_drop:")
     for note in res.rain.notes or []:
@@ -174,7 +178,7 @@ else:
         basemap = b1.selectbox("Map style", list(BASEMAPS), index=list(BASEMAPS).index("Terrain shading (USGS)"),
                                key="fc_basemap")
         show_hot = b2.toggle("Deepest spots", value=True, key="fc_hot")
-        show_over = b3.toggle("Overwhelmed drains", value=True, key="fc_over")
+        show_over = b3.toggle("Full drains", value=True, key="fc_over")
         try:
             st_folium(render.flood_map(scn, basemap=basemap, show_hotspots=show_hot, show_overwhelmed=show_over),
                       key="flood-map", height=560, use_container_width=True, returned_objects=[])
@@ -200,7 +204,7 @@ else:
         t = hot.copy()
         t["map"] = [f"https://www.google.com/maps?q={la:.5f},{lo:.5f}" for la, lo in zip(t["lat"], t["lon"])]
         cols = [c for c in ["neighborhood", "max_depth_in", "area_acres", "lat", "lon", "map"] if c in t]
-        st.dataframe(t[cols], hide_index=True, use_container_width=True, column_config={
+        st.dataframe(t[cols], hide_index=True, width="stretch", column_config={
             "neighborhood": "Neighborhood",
             "max_depth_in": st.column_config.NumberColumn("Deepest (in)", format="%.0f"),
             "area_acres": st.column_config.NumberColumn("Area (acres)", format="%.1f"),
@@ -213,14 +217,14 @@ else:
     d1, d2, d3 = st.columns(3)
     try:
         d1.download_button("Flood map (GeoJSON)", json.dumps(calc.geojson(scn)).encode(),
-                           f"sf_flood_{tag}.geojson", "application/geo+json", use_container_width=True)
+                           f"sf_flood_{tag}.geojson", "application/geo+json", width="stretch")
     except Exception as e:
         d1.caption(f"GeoJSON export failed: {e}")
     if hot is not None and len(hot):
         d2.download_button("Deepest spots (CSV)", hot.to_csv(index=False).encode(), f"sf_flood_hotspots_{tag}.csv",
-                           "text/csv", use_container_width=True)
+                           "text/csv", width="stretch")
     d3.download_button("Depth image (PNG)", render.depth_png(res), f"sf_flood_depth_{tag}.png", "image/png",
-                       use_container_width=True,
+                       width="stretch",
                        help=f"One pixel per grid cell, north up. Bounds [[S, W], [N, E]]: {res.grid.bounds()}")
 
 with st.expander("How this works & limits"):
