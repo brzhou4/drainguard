@@ -3,7 +3,6 @@ import base64
 import io
 
 import folium
-from folium.plugins import HeatMap
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -13,18 +12,15 @@ from src.maps import BASEMAPS, FONT_LINK, TIP_CSS, TOOLTIP_RESET
 
 KM2_TO_ACRES = 247.105
 SF_FIT = [[37.708, -122.515], [37.812, -122.357]]
-OVERWHELMED_COLOR = "#D93025"
+OVERWHELMED_COLOR = "#1B1F24"  # dark, so it is not confused with deep (red) water
 MAX_INLET_DOTS = 3000
-MAX_HEAT_POINTS = 20000
-HEAT_FULL_M = 0.6  # water this deep (2 ft) or more shows at full heat
-HEAT_MIN_M = 0.15  # only "flooded" water (6 in+) heats up; shallow sheet flow everywhere would wash it out
 
-# (min depth m, max depth m, color, label). Water blues like src.maps.RISK_BINS, darker = deeper.
+# (min depth m, max depth m, color, label). Light blue = shallow, through purple, to red = deep.
 DEPTH_CLASSES = [
-    (0.03, 0.15, "#9FD3F0", "1–6 in"),
-    (0.15, 0.30, "#4FA8DE", "6–12 in"),
-    (0.30, 0.60, "#1F66B8", "1–2 ft"),
-    (0.60, np.inf, "#0B2A5E", "Over 2 ft"),
+    (0.03, 0.15, "#8FD0F5", "1–6 in"),
+    (0.15, 0.30, "#2F7FD6", "6–12 in"),
+    (0.30, 0.60, "#9B3FB5", "1–2 ft"),
+    (0.60, np.inf, "#D62828", "Over 2 ft"),
 ]
 ALPHA = 0.75
 
@@ -53,15 +49,11 @@ def depth_png(result, min_depth_m=0.03):
     return buf.getvalue()
 
 
-def _legend_html(show_depth=True, show_heat=False):
-    rows = "" if not show_depth else "".join(
+def _legend_html():
+    rows = "".join(
         f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:{c};'
         f'opacity:{ALPHA};margin-right:6px"></span>{label}</div>'
         for _, _, c, label in DEPTH_CLASSES)
-    if show_heat:
-        rows += ('<div style="margin-top:3px"><span style="display:inline-block;width:46px;height:8px;'
-                 'border-radius:4px;background:linear-gradient(90deg,blue,cyan,lime,yellow,red);'
-                 'margin-right:6px"></span>Flood heat</div>')
     rows += (f'<div style="margin-top:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
              f'background:{OVERWHELMED_COLOR};margin:0 8px 1px 2px"></span>Drain overwhelmed</div>')
     return ('<div style="position:absolute;bottom:24px;left:24px;z-index:9999;background:white;'
@@ -69,23 +61,8 @@ def _legend_html(show_depth=True, show_heat=False):
             f'<div style="font-weight:600;margin-bottom:3px">Water depth</div>{rows}</div>')
 
 
-def heat_points(result, min_depth_m=HEAT_MIN_M, max_points=MAX_HEAT_POINTS):
-    """[[lat, lon, weight], ...] for every cell with 6 in+ of water; weight = depth / 2 ft, capped at 1 (deepest kept if too many)."""
-    d = np.nan_to_num(np.asarray(result.depth_m, float), nan=0.0)
-    r, c = np.nonzero(d >= min_depth_m)
-    if not len(r):
-        return []
-    w = np.minimum(d[r, c] / HEAT_FULL_M, 1.0)
-    if len(r) > max_points:
-        keep = np.argsort(-d[r, c], kind="stable")[:max_points]
-        r, c, w = r[keep], c[keep], w[keep]
-    lat, lon = result.grid.latlon(r, c)
-    return np.c_[np.round(lat, 5), np.round(lon, 5), np.round(w, 3)].tolist()
-
-
-def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, show_overwhelmed=True, height=560,
-              show_heat=False, show_depth=True):
-    """Folium map: basemap + depth overlay and/or flood heatmap + hotspot circles + overwhelmed inlets + legend."""
+def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, show_overwhelmed=True, height=560):
+    """Folium map: basemap + depth overlay + hotspot circles + overwhelmed inlets + legend."""
     result = scenario.result
     m = folium.Map(location=(37.758, -122.44), zoom_start=12, tiles=None, prefer_canvas=True, max_zoom=19,
                    width="100%", height=f"{height}px")
@@ -97,16 +74,10 @@ def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, sh
         folium.TileLayer(tiles=BASEMAPS["Streets"]["tiles"], attr=BASEMAPS["Streets"]["attr"],
                          name="Streets", opacity=0.35, max_zoom=19, max_native_zoom=19).add_to(m)
 
-    if show_depth:
-        uri = "data:image/png;base64," + base64.b64encode(depth_png(result)).decode()
-        # Lat/lon grid stretched linearly in Web Mercator: < 5 m error over SF, so no reprojection needed.
-        folium.raster_layers.ImageOverlay(uri, bounds=result.grid.bounds(), name="Flood depth", opacity=1.0,
-                                          interactive=False, pixelated=True).add_to(m)
-
-    if show_heat:  # same style as the Command Center risk heatmap: hot = more and deeper water nearby
-        pts = heat_points(result)
-        if pts:
-            HeatMap(pts, radius=22, blur=18, min_opacity=0.3, max_zoom=14, name="Flood heatmap").add_to(m)
+    uri = "data:image/png;base64," + base64.b64encode(depth_png(result)).decode()
+    # Lat/lon grid stretched linearly in Web Mercator: < 5 m error over SF, so no reprojection needed.
+    folium.raster_layers.ImageOverlay(uri, bounds=result.grid.bounds(), name="Flood depth", opacity=1.0,
+                                      interactive=False, pixelated=True).add_to(m)
 
     inlets = getattr(scenario, "inlets", None)
     if show_overwhelmed and inlets is not None and len(inlets) and "overwhelmed" in inlets:
@@ -134,11 +105,11 @@ def flood_map(scenario, basemap="Terrain shading (USGS)", show_hotspots=True, sh
                    f'<div style="font-size:14px">Up to <b>{depth_in:.0f} in</b> of water</div>'
                    f'<div style="opacity:.6;font-size:12px">About {acres:.1f} acres ponded</div>')
             folium.CircleMarker((float(r.lat), float(r.lon)), radius=7 + min(8.0, acres ** 0.5 * 1.5),
-                                color="#FFFFFF", weight=2, fill=True, fill_color="#0B2A5E", fill_opacity=0.85,
+                                color="#FFFFFF", weight=2, fill=True, fill_color="#3A3F47", fill_opacity=0.85,
                                 tooltip=folium.Tooltip(tip, style=TIP_CSS, sticky=True)).add_to(fg)
         fg.add_to(m)
 
-    m.get_root().html.add_child(folium.Element(_legend_html(show_depth, show_heat)))
+    m.get_root().html.add_child(folium.Element(_legend_html()))
     m.fit_bounds(SF_FIT)
     return m
 
