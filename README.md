@@ -39,15 +39,38 @@ A 3-page Streamlit app:
 - **Evidence:** test results and limits.
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt            # app only
+pip install -r requirements-analysis.txt   # + notebook packages
 streamlit run app.py --server.address 0.0.0.0
 ```
+
+### Deploy on Streamlit Community Cloud
+
+1. Go to https://share.streamlit.io and sign in with GitHub.
+2. Click **Create app**, choose this repo, branch `main`, main file `app.py`.
+3. Under **Advanced settings → Secrets**, paste:
+   ```toml
+   CITY_TOPIC = "drainguard-city-<pick 6 random letters>"
+   APP_URL = "https://<your-app>.streamlit.app"
+   ```
+4. Deploy. Files saved by the app (volunteers, drain status) reset when the app restarts.
+
+### Files the analysis should write to `data/processed/`
+
+| File | Used by |
+| --- | --- |
+| `drain_scores.csv` (asset_id, lat, lon, neighborhood, risk, rank, tier, reason) | all pages |
+| `results_table.csv` (method × K recall) | Evidence |
+| `results.json` (`{"headline": "62%"}`) | Command Center KPI |
+| `nov18_incidents.csv` (lat, lon) | map toggle |
+| `flood_zone.geojson` | map toggle |
+| `checks.md`, `limits.md` | Evidence |
 
 ## Repo layout
 
 ```text
-app.py                 # Streamlit entry point (to build)
-pages/                 # Command Center, Volunteer, Evidence
+app.py                 # Streamlit entry point
+views/                 # Command Center, Volunteer, Evidence
 src/                   # alerts.py, geo.py, analysis code
 notebooks/             # analysis notebook
 data/raw/              # downloaded datasets (not committed if large)

@@ -1,0 +1,7 @@
+# Extra packages for the analysis notebook (not needed by the app)
+-r requirements.txt
+numpy
+geopandas
+shapely
+scikit-learn
+pyarrow

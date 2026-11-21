@@ -1,12 +1,8 @@
-pandas
-numpy
-geopandas
-shapely
-scikit-learn
-requests
+streamlit>=1.40
+streamlit-folium>=0.22
 folium
-streamlit
-streamlit-folium
+pandas
+requests
 qrcode
+pillow
 python-dotenv
-pyarrow
