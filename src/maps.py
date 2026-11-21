@@ -4,7 +4,7 @@ import json
 import folium
 from folium.plugins import HeatMap
 
-from src.data import CHECKED_COLOR, PROCESSED, TIER_COLORS
+from src.data import CHECKED_COLOR, OTHER_DRAIN_COLOR, PROCESSED, TIER_COLORS
 
 SF_CENTER = (37.758, -122.44)
 
@@ -16,15 +16,26 @@ def legend_html():
         for t, c in TIER_COLORS.items()
     )
     items += (f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;'
-              f'background:{CHECKED_COLOR};margin-right:6px"></span>CHECKED</div>')
+              f'background:{CHECKED_COLOR};margin-right:6px"></span>CHECKED</div>'
+              f'<div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;'
+              f'background:{OTHER_DRAIN_COLOR};margin:0 9px 2px 3px"></span>OTHER DRAINS</div>')
     return ('<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:white;'
             'padding:8px 10px;border:1px solid #ccc;border-radius:6px;font:12px sans-serif">'
             f'{items}</div>')
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
-              radius_m=None, focus=None):
-    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles="OpenStreetMap")
+              radius_m=None, focus=None, all_drains=None):
+    m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles="OpenStreetMap", prefer_canvas=True)
+
+    # Every mapped drain as a small gray dot (one compact GeoJSON layer so 24k points stay fast).
+    if all_drains is not None and len(all_drains):
+        feats = [{"type": "Feature", "properties": {},
+                  "geometry": {"type": "Point", "coordinates": [round(lo, 5), round(la, 5)]}}
+                 for la, lo in zip(all_drains["lat"], all_drains["lon"])]
+        folium.GeoJson({"type": "FeatureCollection", "features": feats}, name="All drains",
+                       marker=folium.CircleMarker(radius=2, weight=0, fill=True,
+                                                  fill_color=OTHER_DRAIN_COLOR, fill_opacity=0.7)).add_to(m)
 
     if show_zone:
         zone = PROCESSED / "flood_zone.geojson"
@@ -47,9 +58,9 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
 
     for _, r in drains.iterrows():
         checked = r.get("status", "Not checked") != "Not checked"
-        color = CHECKED_COLOR if checked else TIER_COLORS.get(r["tier"], "#6B7C93")
+        color = CHECKED_COLOR if checked else TIER_COLORS.get(r["tier"], OTHER_DRAIN_COLOR)
         folium.CircleMarker(
-            (r["lat"], r["lon"]), radius=8 if r["tier"] == "Urgent" else 6,
+            (r["lat"], r["lon"]), radius={"Urgent": 9, "High": 7}.get(r["tier"], 5),
             color="white", weight=1, fill=True, fill_color=color, fill_opacity=0.95,
             tooltip=f"#{int(r['rank'])} {r['tier'].upper()} · {r['neighborhood']}",
             popup=folium.Popup(f"<b>#{int(r['rank'])} {r['tier']}</b><br>{r['asset_id']}<br>"
@@ -61,7 +72,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
         if len(hit):
             r = hit.iloc[0]
             folium.Marker((r["lat"], r["lon"]), tooltip=f"Selected: #{int(r['rank'])}",
-                          icon=folium.Icon(color="red", icon="star")).add_to(m)
+                          icon=folium.Icon(color="black", icon="star")).add_to(m)
 
     if you:
         folium.Marker(you, tooltip="You", icon=folium.Icon(color="blue", icon="user")).add_to(m)

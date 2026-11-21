@@ -16,8 +16,9 @@ RESULTS_JSON = PROCESSED / "results.json"
 
 TZ = ZoneInfo("America/Los_Angeles")
 TIERS = ["Urgent", "High", "Watch"]
-TIER_COLORS = {"Urgent": "#D64545", "High": "#E8892B", "Watch": "#6B7C93"}
-CHECKED_COLOR = "#B8BEC6"
+TIER_COLORS = {"Urgent": "#7B2CBF", "High": "#D64545", "Watch": "#E8892B"}  # purple, red, orange
+CHECKED_COLOR = "#2E9E5B"   # green = checked
+OTHER_DRAIN_COLOR = "#9AA0A6"  # gray = every other mapped drain
 STATUSES = ["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"]
 
 # Rough neighborhood centers, used when a volunteer picks a neighborhood instead of clicking the map.
@@ -53,14 +54,69 @@ def setting(name, default=""):
     return os.environ.get(name, default)
 
 
+def _live_run():
+    """Download + rank from public data once, cached for 6 hours on the server."""
+    import streamlit as st
+
+    @st.cache_data(ttl=6 * 3600, show_spinner="Downloading SF flood reports and storm drains (first load takes ~30 s)...")
+    def _run():
+        from src import live
+        return live.run()
+
+    return _run()
+
+
+def _write_live_outputs(results, summary, test_incidents):
+    import json
+    PROCESSED.mkdir(parents=True, exist_ok=True)
+    if len(results):
+        pct = results.copy()
+        for c in pct.columns[1:]:
+            pct[c] = (pct[c] * 100).round(1).astype(str) + "%"
+        pct.to_csv(RESULTS_CSV, index=False)
+        k50 = results[results["K drains"] == 50]
+        if len(k50):
+            headline = f"{k50.iloc[0]['DrainGuard (greedy coverage)']:.0%} (top 50)"
+            RESULTS_JSON.write_text(json.dumps({"headline": headline, **summary}))
+    else:
+        RESULTS_JSON.write_text(json.dumps({"headline": "no Nov 18 data", **summary}))
+    test_incidents.to_csv(PROCESSED / "nov18_incidents.csv", index=False)
+
+
+def load_all():
+    """Returns (ranked drains, all drains, source) where source is 'file', 'live' or 'fake'."""
+    empty = pd.DataFrame(columns=["asset_id", "lat", "lon"])
+    if DRAINS_CSV.exists():
+        d = pd.read_csv(DRAINS_CSV)
+        if "is_fake" in d.columns and not d["is_fake"].astype(str).str.lower().eq("true").all():
+            return d.sort_values("rank").reset_index(drop=True), empty, "file"
+    try:
+        ranked, inlets, results, summary, test = _live_run()
+        _write_live_outputs(results, summary, test)
+        return ranked, inlets, "live"
+    except Exception as e:  # network down etc.: fall back to the fake starter data
+        LAST_ERROR["live"] = repr(e)
+        if DRAINS_CSV.exists():
+            d = pd.read_csv(DRAINS_CSV)
+            d["is_fake"] = True
+            return d.sort_values("rank").reset_index(drop=True), empty, "fake"
+        return pd.DataFrame(columns=["asset_id", "lat", "lon", "neighborhood", "risk", "rank", "tier",
+                                     "reason", "is_fake"]), empty, "fake"
+
+
+LAST_ERROR = {}
+
+
 def load_drains():
-    """Priority drains from the analysis. Columns: asset_id, lat, lon, neighborhood, risk, rank, tier, reason."""
-    if not DRAINS_CSV.exists():
-        return pd.DataFrame(columns=["asset_id", "lat", "lon", "neighborhood", "risk", "rank", "tier", "reason"])
-    d = pd.read_csv(DRAINS_CSV)
-    if "is_fake" not in d.columns:
-        d["is_fake"] = False
-    return d.sort_values("rank").reset_index(drop=True)
+    return load_all()[0]
+
+
+def all_drains():
+    return load_all()[1]
+
+
+def data_source():
+    return load_all()[2]
 
 
 def load_status():

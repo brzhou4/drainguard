@@ -2,13 +2,22 @@
 import pandas as pd
 import streamlit as st
 
-from src.data import PROCESSED, RESULTS_CSV
+import json
+
+from src.data import PROCESSED, RESULTS_CSV, RESULTS_JSON, data_source
 
 st.title("Does it work?")
 st.write("We picked drains using only data from **before Nov 18, 2026**, then checked them against the "
          "flood reports from the Nov 18 storm, which the model never saw.")
 
-st.subheader("Results: share of Nov 18 flood incidents near the chosen drains")
+if data_source() == "live" and RESULTS_JSON.exists():
+    s = json.loads(RESULTS_JSON.read_text())
+    st.caption(f"Live run: {s.get('reports_downloaded', 0):,} flood / clogged-drain reports and {s.get('drains', 0):,} drains "
+               f"downloaded from DataSF. Trained on {s.get('train_incidents', 0):,} incidents from "
+               f"{s.get('storm_days_used', 0)} storm days (last training day {s.get('train_last_date', '?')}); "
+               f"tested on {s.get('test_incidents', 0):,} incidents from Nov 18-19, 2026.")
+
+st.subheader("Results: share of Nov 18 flood incidents within 100 m of the chosen drains")
 if RESULTS_CSV.exists():
     st.dataframe(pd.read_csv(RESULTS_CSV), hide_index=True, use_container_width=True)
 else:
@@ -32,10 +41,12 @@ for title, fname in [("Checks", "checks.md"), ("Limits", "limits.md")]:
 
 st.subheader("Method")
 st.markdown("1. 311 flood + clogged-drain reports, storm days only, duplicates merged  \n"
-            "2. 100 m grid; features from before the test date (past flooding, city flood zone, drains)  \n"
-            "3. Logistic regression estimates each cell's risk  \n"
-            "4. Greedy maximum coverage picks the top K drains (guaranteed ≥ 63% of the best possible coverage)  \n"
-            "5. Compared against random drains, the city's flood map, and past-history-only picks")
+            "2. Storm day = 25+ flood reports citywide; same-day reports within 30 m merged into one incident  \n"
+            "3. Only incidents before Nov 18, 2026 are used to pick drains (leakage check in code)  \n"
+            "4. Greedy maximum coverage picks drains that cover the most past incidents within 100 m "
+            "(guaranteed ≥ 63% of the best possible coverage). Ranks 1-25 Urgent, 26-100 High, 101-250 Watch  \n"
+            "5. Tested on Nov 18-19 against random drains and against simply ranking by past report count  \n"
+            "*Next: the team's logistic-regression model adds terrain and the city flood zone.*")
 
 st.subheader("Data sources")
 st.markdown("- [SF 311 Cases](https://data.sf.gov/resource/vw6y-z8j6.json)\n"

@@ -5,7 +5,8 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from src.alerts import send_push
-from src.data import (RESULTS_JSON, TIERS, drains_with_status, load_volunteers, log_status, now_str, setting)
+from src.data import (RESULTS_JSON, TIERS, all_drains, data_source, drains_with_status, load_volunteers, log_status,
+                      now_str, setting)
 from src.geo import nearest_drains
 from src.maps import drain_map
 
@@ -25,9 +26,17 @@ with top_r:
     send = st.button("Send storm alert", type="primary", use_container_width=True,
                      help=f"Pushes the top 10 Urgent drains to ntfy topic '{CITY_TOPIC}'")
 
-if len(drains) and drains["is_fake"].any():
-    st.info("Demo data: these drains are FAKE placeholders until the analysis writes the real drain_scores.csv.",
-            icon=":material/info:")
+source = data_source()
+if source == "fake":
+    st.warning("Could not download live city data, so these drains are FAKE placeholders. Reload to retry.",
+               icon=":material/warning:")
+elif source == "live" and RESULTS_JSON.exists():
+    try:
+        s = json.loads(RESULTS_JSON.read_text())
+        st.caption(f"Ranked from real SF data: {s['reports_downloaded']:,} flood reports, {s['drains']:,} drains, "
+                   f"{s['storm_days_used']} past storm days (data before Nov 18 only).")
+    except Exception:
+        pass
 
 if send:
     top10 = drains[(drains["tier"] == "Urgent") & (drains["status"] == "Not checked")].head(10)
@@ -133,9 +142,11 @@ with list_col:
         st.toast(f"Sent {sent} volunteer alert(s)." if len(vols) else "No volunteers yet. Sign up on the Volunteer page.")
 
 with map_col:
-    c1, c2, c3 = st.columns(3)
-    show_heat = c1.toggle("Risk heatmap", value=True)
-    show_zone = c2.toggle("City flood zone", value=False)
+    c0, c1, c2, c3 = st.columns(4)
+    show_all = c0.toggle("All drains", value=True, help="Every mapped storm drain as a small gray dot")
+    show_heat = c1.toggle("Risk heatmap", value=False)
+    show_zone = c2.toggle("City flood zone", value=False, disabled=True,
+                          help="Coming soon: SFPUC 100-year flood zone layer")
     show_nov18 = c3.toggle("Nov 18 reports", value=False)
     if st.button("Refresh map", icon=":material/refresh:"):
         st.rerun()
@@ -146,5 +157,6 @@ with map_col:
     else:
         center, zoom, focus = None, 12, None
     st_folium(drain_map(view if len(view) else drains, show_heat, show_zone, show_nov18,
-                        center=center, zoom=zoom, focus=focus),
+                        center=center, zoom=zoom, focus=focus,
+                        all_drains=all_drains() if show_all else None),
               key=f"map-{focus}", height=560, use_container_width=True, returned_objects=[])
