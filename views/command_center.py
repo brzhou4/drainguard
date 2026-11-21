@@ -91,7 +91,7 @@ k1, k2, k3, k4 = st.columns(4)
 k1.metric("Urgent drains", len(urgent))
 k2.metric("Urgent checked", f"{checked_urgent} of {len(urgent)}")
 k3.metric("Volunteers", len(load_volunteers()))
-k4.metric("Nov 18 test", result_text, help="Share of Nov 18 flooding near our top 50 drains. See Evidence.")
+k4.metric("Nov 18 test", result_text, help="Share of our 25 Urgent drains (picked with data from before Nov 18) that were at a real flood spot on Nov 18. Random drains: about 19%. See Evidence.")
 
 # ---------- Map + urgency list ----------
 map_col, list_col = st.columns([2, 1])

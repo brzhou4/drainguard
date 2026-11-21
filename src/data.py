@@ -76,9 +76,10 @@ def _write_live_outputs(results, summary, test_incidents):
         for c in pct.columns[1:]:
             pct[c] = (pct[c] * 100).round(1).astype(str) + "%"
         pct.to_csv(RESULTS_CSV, index=False)
-        k50 = results[results["K drains"] == 50]
-        if len(k50):
-            headline = f"{k50.iloc[0]['DrainGuard (greedy coverage)']:.0%} (top 50)"
+        k25 = results[results["K drains"] == 25]
+        hit_col = "Hit rate: DrainGuard drains at a Nov 18 flood spot"
+        if len(k25) and hit_col in k25.columns:
+            headline = f"{k25.iloc[0][hit_col]:.0%} hit"
             RESULTS_JSON.write_text(json.dumps({"headline": headline, **summary}))
     else:
         RESULTS_JSON.write_text(json.dumps({"headline": "no Nov 18 data", **summary}))
