@@ -153,9 +153,19 @@ STRINGS = {
                          "zh": "分享您的位置、输入地址或路口，或点击地图，查看离您最近的排水口。"},
     "report_311_general": {"en": "Report a sewer problem or flooding to SF 311", "es": "Reportar un problema de alcantarillado o inundación al SF 311",
                            "zh": "向 SF 311 报告下水道问题或积水"},
-    "report_311_help": {"en": "Opens the city's sewer report form. Use it for blocked drains, sewer backups and street flooding. For an emergency, call 911.",
-                        "es": "Abre el formulario de alcantarillado de la ciudad. Úselo para coladeras tapadas, desbordes del drenaje e inundaciones en la calle. En una emergencia, llame al 911.",
-                        "zh": "打开市政府的下水道报告表。可用于排水口堵塞、下水道倒灌和街道积水。紧急情况请拨打 911。"},
+    "sewer_form_title": {"en": "Report a sewer problem to the city", "es": "Reporte un problema de alcantarillado a la ciudad",
+                         "zh": "向市政府报告下水道问题"},
+    "sewer_form_intro": {"en": "Found a blocked drain, a sewer backup or flooding? Fill out the SF Public Utilities Commission (SFPUC) sewer form below. It goes straight to the city crews who fix it.",
+                         "es": "¿Encontró una coladera tapada, un desborde del drenaje o una inundación? Llene abajo el formulario de alcantarillado de la Comisión de Servicios Públicos de SF (SFPUC). Llega directo a las cuadrillas de la ciudad que lo reparan.",
+                         "zh": "发现排水口堵塞、下水道倒灌或积水？请填写下方旧金山公用事业委员会（SFPUC）的下水道报告表，它会直接送达负责维修的市政工作人员。"},
+    "sewer_form_tips": {"en": "- Give the closest address or cross streets.\n- Say what you see (leaves, trash, standing water, smell).\n- Add a photo if you can, taken from the sidewalk.",
+                        "es": "- Indique la dirección o el cruce de calles más cercano.\n- Diga lo que ve (hojas, basura, agua estancada, olor).\n- Agregue una foto si puede, tomada desde la banqueta.",
+                        "zh": "- 填写最近的地址或路口。\n- 描述您看到的情况（树叶、垃圾、积水、异味）。\n- 如有可能，请在人行道上拍照并附上。"},
+    "sewer_form_open": {"en": "Form not loading? Open it in a new tab", "es": "¿No carga el formulario? Ábralo en una pestaña nueva",
+                        "zh": "表单无法加载？在新标签页中打开"},
+    "report_311_help": {"en": "For an emergency, call 911. Never clear a drain or step into flood water during a storm.",
+                        "es": "En una emergencia, llame al 911. Nunca limpie una coladera ni entre al agua de una inundación durante una tormenta.",
+                        "zh": "紧急情况请拨打 911。暴雨时切勿清理排水口或踩进积水。"},
 }
 
 

@@ -1,0 +1,5 @@
+K drains,DrainGuard (greedy coverage),Most past reports (no greedy),Random drains (mean of 100),Random 95th percentile,Hit rate: DrainGuard drains at a Nov 18 flood spot,Hit rate: random drains
+25,6.3%,1.4%,1.0%,1.9%,76.0%,18.8%
+50,9.1%,2.3%,2.2%,3.5%,72.0%,24.5%
+100,15.6%,4.1%,4.2%,5.4%,63.0%,23.7%
+250,33.1%,8.4%,9.9%,12.3%,61.2%,23.1%
