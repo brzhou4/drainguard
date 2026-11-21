@@ -8,6 +8,13 @@ How it works (kept simple enough to explain on a slide):
      ("to the bay").
    - `fill_depressions`: priority-flood (Barnes et al. 2014) fills every closed low spot up to its spill
      level. Cells where filled > z are DEPRESSIONS (pits that hold water: underpasses, valley floors).
+   - `breach_deep_pits`: a pit whose full depth (spill level - lowest cell) exceeds max_pond_depth_m
+     (default 2.0 m) is not a street-flooding basin in a bare-earth DEM: it is a reservoir or lake
+     (Lake Merced, Mountain/Stow Lake, Sutro/University Mound/Summit reservoirs), a freeway cut or
+     underpass with its own pump/drain, or a valley where a creek runs through a culvert under fill
+     (Islais, Mission Creek). Its lowest cell becomes a culvert sink (an outlet; water reaching it counts
+     as drained, `volume_culvert_m3`), then the DEM is refilled; repeated until no pit is deeper. So no
+     reported pond is deeper than max_pond_depth_m. Pass None to keep every pit.
    - `flow_directions`: D8 steepest descent on the filled surface; flat areas (incl. filled pits) are
      resolved by a breadth-first search from their draining edge, so every land cell drains to an outlet.
      Cells touching an outlet drain straight into it.
@@ -41,7 +48,8 @@ Volumes: runoff = drained + ponded at the end + to_bay (exact; tested to < 1 %).
 the FloodResult: peak_inflow_m3s (peak water arriving at each cell, upstream + local; for pond cells
 the pond's peak inflow shared out by drain capacity), peak_overflow_m3s (the part beyond the cell's
 drain capacity), overwhelmed_mask (cells with drains whose inflow exceeded capacity at some step),
-pond_labels (depression id per cell, 0 = none).
+pond_labels (depression id per cell, 0 = none), volume_culvert_m3, n_breached_pits,
+volume_ponded_end_m3, timings.
 """
 import hashlib
 import heapq

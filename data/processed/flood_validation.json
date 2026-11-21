@@ -1,0 +1,472 @@
+{
+ "generated": "2026-11-21T23:07:20",
+ "event": "Nov 18, 2026 at SF Airport (KSFO) (NWS hourly gauge): 2.69 in",
+ "rain_in": 2.69,
+ "params": {
+  "cell_m": 30.0,
+  "clog_pct": 0.0,
+  "runoff_coeff": 0.85,
+  "source": "nws-observed",
+  "label": "Nov 18, 2026 at SF Airport (KSFO) (NWS hourly gauge): 2.69 in",
+  "date": "2026-11-18"
+ },
+ "rows": [
+  {
+   "map": "simulated >= 0.05 m",
+   "dist_m": 50,
+   "incidents": 831,
+   "hit_rate": 0.42,
+   "flooded_km2": 5.374,
+   "area_share": 0.0444,
+   "chance_hit_rate": 0.175,
+   "chance_p5": 0.1552,
+   "chance_p95": 0.1952,
+   "lift": 2.4,
+   "p_value": 0.005,
+   "inlet_hit_rate": 0.2279,
+   "lift_vs_inlets": 1.84,
+   "threshold_m": 0.05
+  },
+  {
+   "map": "simulated >= 0.05 m",
+   "dist_m": 100,
+   "incidents": 831,
+   "hit_rate": 0.6077,
+   "flooded_km2": 5.374,
+   "area_share": 0.0444,
+   "chance_hit_rate": 0.3636,
+   "chance_p5": 0.3357,
+   "chance_p95": 0.39,
+   "lift": 1.67,
+   "p_value": 0.005,
+   "inlet_hit_rate": 0.4138,
+   "lift_vs_inlets": 1.47,
+   "threshold_m": 0.05
+  },
+  {
+   "map": "simulated >= 0.15 m",
+   "dist_m": 50,
+   "incidents": 831,
+   "hit_rate": 0.2611,
+   "flooded_km2": 2.438,
+   "area_share": 0.0201,
+   "chance_hit_rate": 0.0859,
+   "chance_p5": 0.0698,
+   "chance_p95": 0.1023,
+   "lift": 3.04,
+   "p_value": 0.005,
+   "inlet_hit_rate": 0.1071,
+   "lift_vs_inlets": 2.44,
+   "threshold_m": 0.15
+  },
+  {
+   "map": "simulated >= 0.15 m",
+   "dist_m": 100,
+   "incidents": 831,
+   "hit_rate": 0.4248,
+   "flooded_km2": 2.438,
+   "area_share": 0.0201,
+   "chance_hit_rate": 0.2122,
+   "chance_p5": 0.1889,
+   "chance_p95": 0.2323,
+   "lift": 2.0,
+   "p_value": 0.005,
+   "inlet_hit_rate": 0.2473,
+   "lift_vs_inlets": 1.72,
+   "threshold_m": 0.15
+  },
+  {
+   "map": "simulated >= 0.3 m",
+   "dist_m": 50,
+   "incidents": 831,
+   "hit_rate": 0.1468,
+   "flooded_km2": 1.319,
+   "area_share": 0.0109,
+   "chance_hit_rate": 0.0461,
+   "chance_p5": 0.0337,
+   "chance_p95": 0.059,
+   "lift": 3.19,
+   "p_value": 0.005,
+   "inlet_hit_rate": 0.0547,
+   "lift_vs_inlets": 2.69,
+   "threshold_m": 0.3
+  },
+  {
+   "map": "simulated >= 0.3 m",
+   "dist_m": 100,
+   "incidents": 831,
+   "hit_rate": 0.2708,
+   "flooded_km2": 1.319,
+   "area_share": 0.0109,
+   "chance_hit_rate": 0.1241,
+   "chance_p5": 0.1058,
+   "chance_p95": 0.142,
+   "lift": 2.18,
+   "p_value": 0.005,
+   "inlet_hit_rate": 0.1473,
+   "lift_vs_inlets": 1.84,
+   "threshold_m": 0.3
+  }
+ ],
+ "spearman": {
+  "threshold_m": 0.15,
+  "n_neighborhoods": 41,
+  "rho": 0.467,
+  "p": 0.0021,
+  "rho_per_acre": 0.218,
+  "p_per_acre": 0.1719
+ },
+ "neighborhoods": [
+  {
+   "neighborhood": "Mission",
+   "incidents": 96,
+   "flooded_acres": 59.8,
+   "land_acres": 1202.0
+  },
+  {
+   "neighborhood": "Sunset/Parkside",
+   "incidents": 85,
+   "flooded_acres": 44.5,
+   "land_acres": 2688.0
+  },
+  {
+   "neighborhood": "South of Market",
+   "incidents": 56,
+   "flooded_acres": 22.5,
+   "land_acres": 562.0
+  },
+  {
+   "neighborhood": "Bayview Hunters Point",
+   "incidents": 45,
+   "flooded_acres": 140.3,
+   "land_acres": 3275.0
+  },
+  {
+   "neighborhood": "West of Twin Peaks",
+   "incidents": 41,
+   "flooded_acres": 9.1,
+   "land_acres": 1947.0
+  },
+  {
+   "neighborhood": "Marina",
+   "incidents": 39,
+   "flooded_acres": 12.9,
+   "land_acres": 646.0
+  },
+  {
+   "neighborhood": "Financial District/South Beach",
+   "incidents": 38,
+   "flooded_acres": 8.2,
+   "land_acres": 706.0
+  },
+  {
+   "neighborhood": "Hayes Valley",
+   "incidents": 38,
+   "flooded_acres": 4.4,
+   "land_acres": 312.0
+  },
+  {
+   "neighborhood": "Pacific Heights",
+   "incidents": 37,
+   "flooded_acres": 0.7,
+   "land_acres": 507.0
+  },
+  {
+   "neighborhood": "Outer Mission",
+   "incidents": 31,
+   "flooded_acres": 18.0,
+   "land_acres": 640.0
+  },
+  {
+   "neighborhood": "Noe Valley",
+   "incidents": 30,
+   "flooded_acres": 5.1,
+   "land_acres": 622.0
+  },
+  {
+   "neighborhood": "Haight Ashbury",
+   "incidents": 27,
+   "flooded_acres": 3.3,
+   "land_acres": 355.0
+  },
+  {
+   "neighborhood": "Western Addition",
+   "incidents": 25,
+   "flooded_acres": 0.9,
+   "land_acres": 371.0
+  },
+  {
+   "neighborhood": "Inner Sunset",
+   "incidents": 23,
+   "flooded_acres": 4.0,
+   "land_acres": 906.0
+  },
+  {
+   "neighborhood": "Mission Bay",
+   "incidents": 23,
+   "flooded_acres": 38.0,
+   "land_acres": 509.0
+  },
+  {
+   "neighborhood": "Castro/Upper Market",
+   "incidents": 20,
+   "flooded_acres": 4.4,
+   "land_acres": 545.0
+  },
+  {
+   "neighborhood": "Bernal Heights",
+   "incidents": 18,
+   "flooded_acres": 17.6,
+   "land_acres": 687.0
+  },
+  {
+   "neighborhood": "Japantown",
+   "incidents": 14,
+   "flooded_acres": 2.7,
+   "land_acres": 77.0
+  },
+  {
+   "neighborhood": "Excelsior",
+   "incidents": 14,
+   "flooded_acres": 5.1,
+   "land_acres": 886.0
+  },
+  {
+   "neighborhood": "Golden Gate Park",
+   "incidents": 13,
+   "flooded_acres": 40.3,
+   "land_acres": 1098.0
+  },
+  {
+   "neighborhood": "Inner Richmond",
+   "incidents": 13,
+   "flooded_acres": 10.0,
+   "land_acres": 475.0
+  },
+  {
+   "neighborhood": "Outer Richmond",
+   "incidents": 11,
+   "flooded_acres": 15.8,
+   "land_acres": 1140.0
+  },
+  {
+   "neighborhood": "Russian Hill",
+   "incidents": 11,
+   "flooded_acres": 0.2,
+   "land_acres": 313.0
+  },
+  {
+   "neighborhood": "North Beach",
+   "incidents": 10,
+   "flooded_acres": 5.3,
+   "land_acres": 308.0
+  },
+  {
+   "neighborhood": "Lone Mountain/USF",
+   "incidents": 9,
+   "flooded_acres": 2.2,
+   "land_acres": 369.0
+  },
+  {
+   "neighborhood": "Potrero Hill",
+   "incidents": 9,
+   "flooded_acres": 6.2,
+   "land_acres": 702.0
+  },
+  {
+   "neighborhood": "Lakeshore",
+   "incidents": 8,
+   "flooded_acres": 43.4,
+   "land_acres": 1825.0
+  },
+  {
+   "neighborhood": "Oceanview/Merced/Ingleside",
+   "incidents": 8,
+   "flooded_acres": 2.4,
+   "land_acres": 669.0
+  },
+  {
+   "neighborhood": "Chinatown",
+   "incidents": 7,
+   "flooded_acres": 0.4,
+   "land_acres": 143.0
+  },
+  {
+   "neighborhood": "Tenderloin",
+   "incidents": 7,
+   "flooded_acres": 11.1,
+   "land_acres": 250.0
+  },
+  {
+   "neighborhood": "Nob Hill",
+   "incidents": 6,
+   "flooded_acres": 0.9,
+   "land_acres": 259.0
+  },
+  {
+   "neighborhood": "Presidio Heights",
+   "incidents": 5,
+   "flooded_acres": 2.9,
+   "land_acres": 319.0
+  },
+  {
+   "neighborhood": "Portola",
+   "incidents": 4,
+   "flooded_acres": 6.7,
+   "land_acres": 528.0
+  },
+  {
+   "neighborhood": "Glen Park",
+   "incidents": 2,
+   "flooded_acres": 3.8,
+   "land_acres": 425.0
+  },
+  {
+   "neighborhood": "McLaren Park",
+   "incidents": 2,
+   "flooded_acres": 0.0,
+   "land_acres": 392.0
+  },
+  {
+   "neighborhood": "Twin Peaks",
+   "incidents": 2,
+   "flooded_acres": 3.1,
+   "land_acres": 421.0
+  },
+  {
+   "neighborhood": "Treasure Island",
+   "incidents": 2,
+   "flooded_acres": 9.1,
+   "land_acres": 562.0
+  },
+  {
+   "neighborhood": "Visitacion Valley",
+   "incidents": 1,
+   "flooded_acres": 0.2,
+   "land_acres": 392.0
+  },
+  {
+   "neighborhood": "Presidio",
+   "incidents": 1,
+   "flooded_acres": 34.7,
+   "land_acres": 1506.0
+  },
+  {
+   "neighborhood": "Lincoln Park",
+   "incidents": 0,
+   "flooded_acres": 1.3,
+   "land_acres": 250.0
+  },
+  {
+   "neighborhood": "Seacliff",
+   "incidents": 0,
+   "flooded_acres": 0.7,
+   "land_acres": 135.0
+  }
+ ],
+ "sentence": "42% of real Nov 18 flood reports were within 100 m of a spot the model floods (6+ in of water), which covers 2.0% of SF land; random spots on land score 21%, so the map is 2.0x better than chance. Against random street drains it is 1.7x better.",
+ "notes": [
+  "831 of 831 incidents fall inside the model grid.",
+  "SFPUC 100-year flood zone file not found; comparison skipped.",
+  "Distances are to the nearest flooded 30 m cell centre. Chance = share of random land points (200 Monte Carlo draws, seed 18) within the same distance of the same map.",
+  "311 reports include clogged drains and come from streets, not parks or hills, so the inlet baseline (random storm-drain inlets) is the fairer comparison."
+ ],
+ "sweep": [
+  {
+   "runoff_coeff": 0.85,
+   "clog_pct": 50,
+   "hit_rate": 0.4272,
+   "area_share": 0.0203,
+   "lift": 2.01,
+   "lift_vs_inlets": 1.72
+  },
+  {
+   "runoff_coeff": 0.85,
+   "clog_pct": 0,
+   "hit_rate": 0.4248,
+   "area_share": 0.0201,
+   "lift": 2.0,
+   "lift_vs_inlets": 1.72
+  },
+  {
+   "runoff_coeff": 0.85,
+   "clog_pct": 25,
+   "hit_rate": 0.4248,
+   "area_share": 0.0202,
+   "lift": 2.0,
+   "lift_vs_inlets": 1.72
+  },
+  {
+   "runoff_coeff": 0.95,
+   "clog_pct": 50,
+   "hit_rate": 0.438,
+   "area_share": 0.0215,
+   "lift": 2.0,
+   "lift_vs_inlets": 1.69
+  },
+  {
+   "runoff_coeff": 0.95,
+   "clog_pct": 0,
+   "hit_rate": 0.4356,
+   "area_share": 0.0213,
+   "lift": 1.99,
+   "lift_vs_inlets": 1.69
+  },
+  {
+   "runoff_coeff": 0.95,
+   "clog_pct": 25,
+   "hit_rate": 0.4356,
+   "area_share": 0.0214,
+   "lift": 1.99,
+   "lift_vs_inlets": 1.69
+  },
+  {
+   "runoff_coeff": 0.75,
+   "clog_pct": 0,
+   "hit_rate": 0.4019,
+   "area_share": 0.0188,
+   "lift": 1.96,
+   "lift_vs_inlets": 1.7
+  },
+  {
+   "runoff_coeff": 0.75,
+   "clog_pct": 25,
+   "hit_rate": 0.4019,
+   "area_share": 0.0189,
+   "lift": 1.96,
+   "lift_vs_inlets": 1.7
+  },
+  {
+   "runoff_coeff": 0.75,
+   "clog_pct": 50,
+   "hit_rate": 0.4019,
+   "area_share": 0.0189,
+   "lift": 1.96,
+   "lift_vs_inlets": 1.7
+  },
+  {
+   "runoff_coeff": 0.6,
+   "clog_pct": 0,
+   "hit_rate": 0.3755,
+   "area_share": 0.0165,
+   "lift": 1.95,
+   "lift_vs_inlets": 1.7
+  },
+  {
+   "runoff_coeff": 0.6,
+   "clog_pct": 25,
+   "hit_rate": 0.3755,
+   "area_share": 0.0165,
+   "lift": 1.95,
+   "lift_vs_inlets": 1.7
+  },
+  {
+   "runoff_coeff": 0.6,
+   "clog_pct": 50,
+   "hit_rate": 0.3755,
+   "area_share": 0.0166,
+   "lift": 1.94,
+   "lift_vs_inlets": 1.7
+  }
+ ]
+}
