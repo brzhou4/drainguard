@@ -59,11 +59,13 @@ def _live_run():
     import streamlit as st
 
     @st.cache_data(ttl=6 * 3600, show_spinner="Downloading SF flood reports and storm drains (first load takes ~30 s)...")
-    def _run():
+    def _run(code_version):  # code_version: re-run automatically when live.py changes
         from src import live
         return live.run()
 
-    return _run()
+    import hashlib
+    version = hashlib.md5((ROOT / "src" / "live.py").read_bytes()).hexdigest()
+    return _run(version)
 
 
 def _write_live_outputs(results, summary, test_incidents):
