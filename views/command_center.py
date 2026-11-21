@@ -93,34 +93,41 @@ k2.metric("Urgent checked", f"{checked_urgent} of {len(urgent)}")
 k3.metric("Volunteers", len(load_volunteers()))
 k4.metric("Nov 18 test", result_text, help="Share of our 25 Urgent drains (picked with data from before Nov 18) that were at a real flood spot on Nov 18. Random drains: about 19%. See Evidence.")
 
+# ---------- Filters (full width, above map + list) ----------
+STATUSES_ALL = ["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"]
+f1, f2, f3 = st.columns([1.2, 1, 1.8])
+with f1:
+    tier_pick = st.pills("Tier", TIERS, selection_mode="multi", default=["Urgent", "High"], key="f_tier")
+with f2:
+    hoods = ["All neighborhoods"] + sorted(drains["neighborhood"].dropna().unique())
+    hood_pick = st.selectbox("Neighborhood", hoods, key="f_hood")
+with f3:
+    status_pick = st.pills("Status", STATUSES_ALL, selection_mode="multi", default=STATUSES_ALL, key="f_status")
+
+view = drains[drains["tier"].isin(tier_pick or TIERS)]
+if hood_pick != "All neighborhoods":
+    view = view[view["neighborhood"] == hood_pick]
+view = view[view["status"].isin(status_pick or STATUSES_ALL)].reset_index(drop=True)
+filter_key = f"{sorted(tier_pick or TIERS)}|{hood_pick}|{sorted(status_pick or STATUSES_ALL)}"
+n_checked = int((drains["status"] != "Not checked").sum())
+st.caption(f"Showing **{len(view)}** of {len(drains)} priority drains · {n_checked} checked so far "
+           "(statuses come from this app's buttons; the city does not publish drain-cleaning records)")
+
 # ---------- Map + urgency list ----------
 map_col, list_col = st.columns([2, 1])
 
 with list_col:
     st.subheader("Urgency list")
-    f1, f2 = st.columns(2)
-    tier_pick = f1.multiselect("Tier", TIERS, default=["Urgent", "High"])
-    hoods = sorted(drains["neighborhood"].dropna().unique())
-    hood_pick = f2.multiselect("Neighborhood", hoods)
-    status_pick = st.multiselect("Status", ["Not checked", "Checked - clear", "Blocked - reported to 311",
-                                            "Couldn't reach"], default=["Not checked", "Checked - clear", "Blocked - reported to 311", "Couldn't reach"])
-
-    view = drains[drains["tier"].isin(tier_pick or TIERS)]
-    if hood_pick:
-        view = view[view["neighborhood"].isin(hood_pick)]
-    if status_pick:
-        view = view[view["status"].isin(status_pick)]
-
-    view = view.reset_index(drop=True)
     selected = None
     if view.empty:
-        st.write("No drains match these filters. Clear a filter to see more.")
+        st.write("No drains match these filters. Turn a filter back on to see more.")
     else:
         st.caption("Click a row to zoom the map to that drain and mark it checked.")
         event = st.dataframe(
             view[["rank", "tier", "neighborhood", "reason", "status", "checked_at"]],
             hide_index=True, use_container_width=True, height=330,
-            on_select="rerun", selection_mode="single-row", key="drain_table",
+            on_select="rerun", selection_mode="single-row",
+            key=f"drain_table-{hash(filter_key)}",  # new filters = fresh table, no stale selection
             column_config={
                 "rank": st.column_config.NumberColumn("#", width="small"),
                 "tier": st.column_config.TextColumn("Tier", width="small"),
@@ -187,7 +194,7 @@ with map_col:
                    "Deselect the row to see the whole city.")
     else:
         center, zoom, focus = None, 12, None
-    st_folium(drain_map(view if len(view) else drains, show_heat, show_zone, show_nov18,
+    st_folium(drain_map(view, show_heat, show_zone, show_nov18,
                         center=center, zoom=zoom, focus=focus,
                         all_drains=all_drains() if show_all else None, basemap=basemap),
-              key=f"map-{focus}-{basemap}", height=560, use_container_width=True, returned_objects=[])
+              key=f"map-{focus}-{basemap}-{hash(filter_key)}", height=560, use_container_width=True, returned_objects=[])
