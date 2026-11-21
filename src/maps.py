@@ -31,8 +31,6 @@ def _swatch(c):
 
 # Free basemaps (no API key). USGS = official US Geological Survey National Map tiles.
 BASEMAPS = {
-    "Dark": dict(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-                 attr="Tiles &copy; Esri", max_native_zoom=16),
     "Streets": dict(tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                     attr="&copy; OpenStreetMap contributors", max_native_zoom=19),
     "Topographic (USGS)": dict(tiles="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
@@ -57,11 +55,6 @@ def legend_html():
               f'background:{CHECKED_COLOR};margin-right:6px"></span>CHECKED</div>'
               f'<div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;'
               f'background:{OTHER_DRAIN_COLOR};margin:0 9px 2px 3px"></span>OTHER DRAINS</div>')
-    scale = "".join(f'<span style="display:inline-block;width:18px;height:8px;background:{c}"></span>'
-                    for _, c in RISK_BINS)
-    items += ('<div style="margin-top:6px;font-weight:600">FLOOD RISK %</div>'
-              f'<div>{scale}</div><div style="display:flex;justify-content:space-between;width:90px">'
-              '<span>0</span><span>20+</span></div>')
     return ('<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:white;'
             'padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:12px Poppins,sans-serif">'
             f'{items}</div>')
