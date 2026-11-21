@@ -15,7 +15,8 @@ FONT_LINK = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
 TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;border:none!important;"
                  "box-shadow:none!important;padding:0!important;}"
                  ".leaflet-tooltip:before,.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,"
-                 ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}</style>")
+                 ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}"
+                 ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}</style>")
 TIP_CSS = ("background-color:#17171C;color:#F5F5F7;font-family:Poppins,sans-serif;font-size:13px;"
            "border:1px solid #3A3A44;border-radius:8px;padding:8px 11px;box-shadow:0 6px 18px rgba(0,0,0,.35);")
 
@@ -66,7 +67,7 @@ def legend_html():
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
-              radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None):
+              radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None):
     m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None, prefer_canvas=True, max_zoom=19)
     m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
     b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
@@ -98,6 +99,33 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
             style_function=lambda f: {"fillColor": f["properties"]["color"], "color": f["properties"]["color"],
                                       "weight": 0.5, "fillOpacity": 0.62},
             highlight_function=lambda f: {"weight": 2, "color": "#FFFFFF", "dashArray": "4 3", "fillOpacity": 0.85},
+            tooltip=folium.GeoJsonTooltip(fields=["tip"], labels=False, sticky=True, style=TIP_CSS),
+        ).add_to(m)
+
+    # Neighborhood outlines: hover highlights the area and shows its name.
+    labels = []
+    if hoods and hoods.get("features"):
+        counts = drains.groupby("neighborhood")["tier"].value_counts().unstack(fill_value=0) if len(drains) else None
+        feats = []
+        for f in hoods["features"]:
+            name = (f.get("properties") or {}).get("nhood", "")
+            n_u = int(counts.loc[name].get("Urgent", 0)) if counts is not None and name in counts.index else 0
+            n_all = int(counts.loc[name].sum()) if counts is not None and name in counts.index else 0
+            tip = (f'<div style="font-size:15px;font-weight:700">{name}</div>'
+                   f'<div style="opacity:.7;font-size:12px">{n_all} priority drain{"s" if n_all != 1 else ""} shown'
+                   + (f' · {n_u} urgent' if n_u else '') + '</div>')
+            feats.append({"type": "Feature", "properties": {"tip": tip}, "geometry": f["geometry"]})
+            # label position: average of the largest ring's points
+            geom = f["geometry"]
+            polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+            ring = max((p[0] for p in polys), key=len)
+            labels.append((name, sum(pt[1] for pt in ring) / len(ring), sum(pt[0] for pt in ring) / len(ring)))
+        folium.GeoJson(
+            {"type": "FeatureCollection", "features": feats}, name="Neighborhoods",
+            style_function=lambda f: {"fillColor": "#1F3A5F", "fillOpacity": 0, "color": "#1F3A5F",
+                                      "weight": 1, "opacity": 0.45},
+            highlight_function=lambda f: {"weight": 3, "color": "#1F3A5F", "dashArray": "6 4",
+                                          "fillOpacity": 0.10, "opacity": 1},
             tooltip=folium.GeoJsonTooltip(fields=["tip"], labels=False, sticky=True, style=TIP_CSS),
         ).add_to(m)
 
@@ -144,6 +172,14 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
             popup=folium.Popup(f"<b>#{int(r['rank'])} {r['tier']}</b><br>{r['asset_id']}<br>"
                                f"{r['reason']}<br>Status: {r.get('status', 'Not checked')}", max_width=260),
         ).add_to(m)
+
+    # Neighborhood names on top of the drains, with a white halo so they stay readable.
+    for name, la, lo in labels:
+        folium.Marker((la, lo), icon=folium.DivIcon(
+            icon_size=(160, 20), icon_anchor=(80, 10), class_name="nhood-label",
+            html=(f'<div style="pointer-events:none;text-align:center;font:700 11px Poppins,sans-serif;'
+                  f'letter-spacing:.06em;color:#1B1F24;text-transform:uppercase;'
+                  f'text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 3px #fff">{name}</div>'))).add_to(m)
 
     if focus is not None:
         hit = drains[drains["asset_id"] == focus]

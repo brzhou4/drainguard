@@ -122,6 +122,23 @@ def data_source():
     return load_all()[2]
 
 
+def neighborhoods_geojson():
+    """SF's 41 Analysis Neighborhoods (DataSF j2bu-swwd), cached for a day. None if unavailable."""
+    import streamlit as st
+
+    @st.cache_data(ttl=24 * 3600, show_spinner=False)
+    def _get():
+        import requests
+        r = requests.get("https://data.sf.gov/resource/j2bu-swwd.geojson", params={"$limit": 100}, timeout=60)
+        r.raise_for_status()
+        return r.json()
+
+    try:
+        return _get()
+    except Exception:
+        return None
+
+
 def flood_cells():
     """Flood-risk % squares from the live run (empty if live data is unavailable)."""
     try:

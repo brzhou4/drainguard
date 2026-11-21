@@ -5,7 +5,7 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from src.alerts import send_push
-from src.data import (RESULTS_JSON, TIERS, all_drains, data_source, drains_with_status, load_volunteers,
+from src.data import (RESULTS_JSON, TIERS, all_drains, data_source, drains_with_status, load_volunteers, neighborhoods_geojson,
                       log_status,
                       now_str, setting)
 from src.geo import nearest_drains
@@ -180,8 +180,10 @@ with map_col:
     basemap = st.segmented_control(
         "Map style", list(BASEMAPS), default="Streets", key="basemap",
         help="Topographic and terrain views show hills and low spots: water flows downhill to the low drains.") or "Streets"
-    c0, c1, c2, c3 = st.columns(4)
-    show_all = c0.toggle("All drains", value=True, help="Every mapped storm drain as a small gray dot")
+    cn, c0, c1, c2, c3 = st.columns(5)
+    show_hoods = cn.toggle("Neighborhoods", value=True, help="Neighborhood names and outlines; hover to highlight an area")
+    show_all = c0.toggle("Other drains", value=False,
+                         help="Show every other mapped drain (not ranked) as small gray dots")
     show_heat = c1.toggle("Risk heatmap", value=False)
     show_zone = c2.toggle("City flood zone", value=False, disabled=True,
                           help="Coming soon: SFPUC 100-year flood zone layer")
@@ -198,5 +200,6 @@ with map_col:
         center, zoom, focus = None, 12, None
     st_folium(drain_map(view, show_heat, show_zone, show_nov18,
                         center=center, zoom=zoom, focus=focus,
-                        all_drains=all_drains() if show_all else None, basemap=basemap),
+                        all_drains=all_drains() if show_all else None, basemap=basemap,
+                        hoods=neighborhoods_geojson() if show_hoods else None),
               key=f"map-{focus}-{basemap}-{hash(filter_key)}", height=560, use_container_width=True, returned_objects=[])
