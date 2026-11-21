@@ -173,16 +173,6 @@ with st.expander(T("your_link_title"), expanded=bool(st.session_state.pop("just_
         st.query_params.clear()
         st.rerun()
 
-with st.expander(T("alerts_title"), icon=":material/notifications:"):
-    st.write(T("alerts_body", topic=me["topic"]))
-    try:
-        import qrcode
-        buf = io.BytesIO()
-        qrcode.make(f"https://ntfy.sh/{me['topic']}").save(buf)
-        st.image(buf.getvalue(), width=180)
-    except Exception:
-        st.caption(f"https://ntfy.sh/{me['topic']}")
-
 if me["adult"] == "no":
     st.caption(T("minor_reminder"))
 
