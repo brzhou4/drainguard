@@ -18,8 +18,8 @@ TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;borde
                  ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}"
                  ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}"
                  ".hide-labels .nhood-label{display:none!important;}</style>")
-TIP_CSS = ("background-color:#17171C;color:#F5F5F7;font-family:Poppins,sans-serif;font-size:13px;"
-           "border:1px solid #3A3A44;border-radius:8px;padding:8px 11px;box-shadow:0 6px 18px rgba(0,0,0,.35);")
+TIP_CSS = ("background-color:#FFFFFF;color:#1B1F24;font-family:Poppins,sans-serif;font-size:13px;"
+           "border:1px solid #E3E6EB;border-radius:10px;padding:9px 12px;box-shadow:0 6px 20px rgba(16,24,40,.14);")
 
 # Flood risk % (share of past storm days with flooding in a ~250 m square). Water blues, darker = higher.
 RISK_BINS = [(0.0001, "#C6E6F5"), (2, "#7CC4E8"), (5, "#3A9AD9"), (10, "#1F66B8"), (20, "#0B3A7E")]
