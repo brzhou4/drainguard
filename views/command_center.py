@@ -24,10 +24,19 @@ st.markdown("""<style>
 .block-container{padding-top:3.2rem;max-width:100%}
 [data-testid] [data-testid="stMarkdownContainer"] .dg-panel-title,
 [data-testid] [data-testid="stMarkdownContainer"] .dg-alert-head{font-family:'Roboto Slab',serif!important}
+[data-testid] [data-testid="stMarkdownContainer"] .dg-brand{font-size:28px!important;font-weight:700!important;margin-bottom:2px!important}
 .dg-panel-title{font-weight:600;font-size:22px;margin:0 0 2px}
 .dg-big{font-size:40px!important;font-weight:600;line-height:1.1!important;margin:2px 0 8px!important}
 .dg-label{font-size:14px!important;font-weight:600;margin:14px 0 0!important;color:#EDEDED}
 .dg-muted{font-size:13px!important;color:#A1A1AA;margin:2px 0!important;line-height:1.5}
+.dg-lede{font-size:17px!important;font-weight:600;line-height:1.4!important;margin:4px 0 8px!important;color:#EDEDED}
+ol.dg-steps{margin:4px 0 0 0!important;padding-left:20px!important}
+ol.dg-steps li{font-size:13px!important;color:#A1A1AA;line-height:1.5!important;margin:0 0 4px!important}
+ol.dg-steps b{color:#EDEDED}
+.dg-safety{font-size:13px!important;color:#FDE68A;background:#2A2410;border:1px solid #5C4A12;border-radius:8px;padding:8px 10px;margin:12px 0!important}
+.dg-now{background:#1A1A1D;border:1px solid #2E2E33;border-radius:12px;padding:12px 14px;margin:4px 0 10px}
+.dg-row{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:#A1A1AA;margin:4px 0}
+.dg-row b{color:#EDEDED;font-size:15px;white-space:nowrap}
 .dg-bar{height:10px;border-radius:5px;background:#2E2E33;overflow:hidden;margin:4px 0 6px}
 .dg-bar span{display:block;height:100%;background:#4EA1F3;border-radius:5px}
 </style>""", unsafe_allow_html=True)
@@ -154,28 +163,43 @@ with center_col:
         st.caption(f"Zoomed to drain #{int(selected['rank'])} ({selected['neighborhood']}). "
                    "Deselect the row to see the whole city.")
 
-# ---------- Left: city-wide numbers (like the turnout panel) ----------
+# ---------- Left: what DrainGuard is (intro), then the live numbers ----------
 with stats_col:
-    st.markdown('<p class="dg-panel-title">Command Center</p>', unsafe_allow_html=True)
+    n_drains = f"{summary['drains']:,}" if summary else "about 24,000"
+    st.markdown(f"""<p class="dg-panel-title dg-brand">DrainGuard</p>
+<p class="dg-lede">Before a storm, DrainGuard shows San Francisco which storm drains to check first.</p>
+<p class="dg-muted">The city has {n_drains} storm drains and crews can only check a few before the rain.
+We rank every one by how likely it is to need checking, using years of 311 flood reports and the city's drain map.</p>
+<p class="dg-label">How it works</p>
+<ol class="dg-steps">
+<li><b>Rank.</b> Drains near spots that flooded in past storms rise to the top.</li>
+<li><b>Check.</b> Crews and volunteers visit the closest Urgent drains and tap Clear, Blocked or Can't reach.</li>
+<li><b>Report.</b> Blocked drains go to SF 311 so the city can clear them before the rain.</li>
+</ol>
+<p class="dg-label">Does it work?</p>
+<p class="dg-muted">We picked drains using only data from before the Nov 18, 2026 storm. <b style="color:#EDEDED">{result_text.replace(" hit", "")}</b>
+of our 25 Urgent drains turned out to be at a real flood spot, versus about 19% for random drains. Details on the Evidence page.</p>
+<p class="dg-safety">Look and report only. Never clear a drain during a storm or step into pooled water.</p>""",
+                unsafe_allow_html=True)
+
     pct = checked_urgent / len(urgent) if len(urgent) else 0
-    st.markdown(f"""<p class="dg-label">Urgent drains checked</p>
-<p class="dg-big">{checked_urgent} of {len(urgent)}</p>
+    st.markdown(f"""<div class="dg-now">
+<p class="dg-label" style="margin-top:0!important">Right now</p>
+<div class="dg-row"><span>Urgent drains checked</span><b>{checked_urgent} of {len(urgent)}</b></div>
 <div class="dg-bar" role="progressbar" aria-valuenow="{pct * 100:.0f}" aria-valuemin="0" aria-valuemax="100"><span style="width:{pct * 100:.1f}%"></span></div>
-<p class="dg-muted">{int(drains["status"].isin(DONE_STATUSES).sum())} of {len(drains)} priority drains checked in all</p>
-<p class="dg-label">Volunteers signed up</p><p class="dg-big" style="font-size:30px!important">{len(load_volunteers())}</p>
-<p class="dg-label">Nov 18 test</p><p class="dg-big" style="font-size:30px!important">{result_text}</p>
-<p class="dg-muted">Share of our 25 Urgent drains, picked with data from before Nov 18, that were at a real
-flood spot on Nov 18. Random drains: about 19%. See Evidence.</p>""", unsafe_allow_html=True)
-    if source == "live" and summary:
-        st.markdown(f'<p class="dg-muted" style="margin-top:14px">Ranked from real SF data: {summary["reports_downloaded"]:,} '
-                    f'flood reports, {summary["drains"]:,} drains, {summary["storm_days_used"]} past storm days '
-                    f'(data before Nov 18 only). Loaded {now_str()}.</p>', unsafe_allow_html=True)
+<div class="dg-row"><span>All drains checked</span><b>{int(drains["status"].isin(DONE_STATUSES).sum())} of {len(drains)}</b></div>
+<div class="dg-row"><span>Volunteers</span><b>{len(load_volunteers())}</b></div>
+</div>""", unsafe_allow_html=True)
     st.download_button("Crew route sheet (CSV)", view.to_csv(index=False).encode(),
                        "drainguard_route_sheet.csv", "text/csv", icon=":material/download:", use_container_width=True)
-    rs = round_start()
-    st.caption(f"Checks count for {check_ttl_days()} days"
-               + (f" or since the round started {rs:%b %d %H:%M}" if rs is not None else "")
-               + f". Counting from {check_cutoff():%b %d %H:%M}. Saved to: "
-               + ("Supabase" if backend() == "supabase" else "local files (reset on restart)") + ". "
-               + "Statuses come from this app's buttons; the city does not publish drain-cleaning records. "
-               + "Drains a volunteer is walking to are hidden from the map until they report or time runs out.")
+    with st.expander("About this data", icon=":material/info:"):
+        if source == "live" and summary:
+            st.caption(f"Ranked from real SF data: {summary['reports_downloaded']:,} flood reports, {summary['drains']:,} drains, "
+                       f"{summary['storm_days_used']} past storm days (data before Nov 18 only). Loaded {now_str()}.")
+        rs = round_start()
+        st.caption(f"Checks count for {check_ttl_days()} days"
+                   + (f" or since the round started {rs:%b %d %H:%M}" if rs is not None else "")
+                   + f". Counting from {check_cutoff():%b %d %H:%M}. Saved to: "
+                   + ("Supabase" if backend() == "supabase" else "local files (reset on restart)") + ". "
+                   + "Statuses come from this app's buttons; the city does not publish drain-cleaning records. "
+                   + "Drains a volunteer is walking to are hidden from the map until they report or time runs out.")
