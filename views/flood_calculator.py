@@ -182,7 +182,7 @@ else:
     map_col, side_col = st.columns([2, 1])
     with map_col:
         b1, b2, b3, b4 = st.columns([2, 1, 1, 1])
-        basemap = b1.selectbox("Map style", list(BASEMAPS), index=list(BASEMAPS).index("Terrain shading (USGS)"),
+        basemap = b1.selectbox("Map style", list(BASEMAPS), index=list(BASEMAPS).index("Dark"),
                                key="fc_basemap")
         show_hot = b2.toggle("Deepest spots", value=True, key="fc_hot")
         show_heat = b3.toggle("Heatmap", value=True, key="fc_heat",

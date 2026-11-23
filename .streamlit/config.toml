@@ -1,5 +1,13 @@
+# Dark, map-first look (inspired by electionmapsf.com) in sf.gov's typefaces:
+# Roboto Flex for all text, Roboto Slab for headings, Roboto Mono for code (checked in sf.gov's own CSS).
 [theme]
-primaryColor = "#1F3A5F"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F4F6F9"
-textColor = "#1B1F24"
+base = "dark"
+primaryColor = "#4EA1F3"
+backgroundColor = "#0E0E10"
+secondaryBackgroundColor = "#1A1A1D"
+textColor = "#EDEDED"
+borderColor = "#2E2E33"
+baseRadius = "0.6rem"
+font = "Roboto Flex:https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700&display=swap"
+headingFont = "Roboto Slab:https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;600;700&display=swap"
+codeFont = "Roboto Mono:https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&display=swap"

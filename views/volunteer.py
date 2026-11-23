@@ -122,6 +122,8 @@ st.divider()
 st.subheader(T("sewer_form_title"))
 st.write(T("sewer_form_intro"))
 st.markdown(T("sewer_form_tips"))
+# The city form has a see-through background; give it white so its dark text stays readable on the dark theme.
+st.markdown(f'<style>iframe[src="{SFPUC_SEWER_FORM_URL}"]{{background:#FFFFFF;border-radius:12px}}</style>', unsafe_allow_html=True)
 st.iframe(SFPUC_SEWER_FORM_URL, height=900)
 st.link_button(T("sewer_form_open"), SFPUC_SEWER_FORM_URL, icon=":material/open_in_new:", use_container_width=True)
 st.caption(T("report_311_help"))

@@ -11,7 +11,7 @@ from src.data import CHECKED_COLOR, DONE_STATUSES, OTHER_DRAIN_COLOR, PROCESSED,
 SF_CENTER = (37.758, -122.44)
 
 FONT_LINK = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
-             '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" '
+             '<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700&family=Roboto+Slab:wght@500;600;700&display=swap" '
              'rel="stylesheet">')
 # Remove Leaflet's default white tooltip box + arrow so only our dark card shows.
 TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;border:none!important;"
@@ -19,8 +19,14 @@ TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;borde
                  ".leaflet-tooltip:before,.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,"
                  ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}"
                  ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}"
-                 ".hide-labels .nhood-label{display:none!important;}</style>")
-TIP_CSS = ("background-color:#FFFFFF;color:#1B1F24;font-family:Poppins,sans-serif;font-size:13px;"
+                 ".hide-labels .nhood-label{display:none!important;}"
+                 # Night mode (like Google Maps' dark mode): invert the street map and turn hues back, so water,
+                 # parks and roads keep their colors but dark, and the drains stay the brightest thing on it.
+                 ".dg-night{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.55);}"
+                 ".leaflet-container{font-family:'Roboto Flex',sans-serif!important;background:#0E0E10!important}"
+                 ".leaflet-control-attribution{background:rgba(14,14,16,.75)!important;color:#A1A1AA!important}"
+                 ".leaflet-control-attribution a{color:#C4B5FD!important}</style>")
+TIP_CSS = ("background-color:#FFFFFF;color:#1B1F24;font-family:'Roboto Flex',sans-serif;font-size:13px;"
            "border:1px solid #E3E6EB;border-radius:10px;padding:9px 12px;box-shadow:0 6px 20px rgba(16,24,40,.14);")
 
 # Flood risk % (share of past storm days with flooding in a ~250 m square). Water blues, darker = higher.
@@ -40,7 +46,7 @@ class _MapScript(MacroElement):
               + ".hide-labels .nhood-label{display:none!important;}";
             document.head.appendChild(st);
             var f = document.createElement('link'); f.rel = 'stylesheet';
-            f.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap';
+            f.href = 'https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700&family=Roboto+Slab:wght@500;600;700&display=swap';
             document.head.appendChild(f);
           }
           function lbl(){ map.getContainer().classList.toggle('hide-labels', map.getZoom() < 14); }
@@ -68,6 +74,9 @@ def _swatch(c):
 
 # Free basemaps (no API key). USGS = official US Geological Survey National Map tiles.
 BASEMAPS = {
+    # Night mode: OpenStreetMap streets restyled dark with a CSS filter (see .dg-night). Free, no key.
+    "Dark": dict(class_name="dg-night", tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                 attr="&copy; OpenStreetMap contributors", max_native_zoom=19),
     "Streets": dict(tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                     attr="&copy; OpenStreetMap contributors", max_native_zoom=19),
     "Topographic (USGS)": dict(tiles="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
@@ -82,33 +91,40 @@ BASEMAPS = {
 }
 
 
-def legend_html():
+def add_basemap(m, basemap):
+    """Tile layer for a BASEMAPS entry ('Dark' = night-mode streets)."""
+    b = BASEMAPS.get(basemap, BASEMAPS["Dark"])
+    extra = {"class_name": b["class_name"]} if "class_name" in b else {}
+    folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
+                     max_native_zoom=b["max_native_zoom"], **extra).add_to(m)
+
+
+def legend_html(dark=False):
     items = "".join(
         f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;'
         f'background:{c};margin-right:6px"></span>{t.upper()}</div>'
         for t, c in TIER_COLORS.items()
     )
     items += (f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;'
-              f'background:{CHECKED_COLOR};margin-right:6px"></span>CHECKED</div>'
+              f'border:3px solid {CHECKED_COLOR};box-sizing:border-box;margin-right:6px"></span>CHECKED (RING)</div>'
               f'<div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;'
               f'background:{OTHER_DRAIN_COLOR};margin:0 9px 2px 3px"></span>OTHER DRAINS</div>')
-    return ('<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:white;'
-            'padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:12px Poppins,sans-serif">'
+    bg, fg, line = ('#1A1A1D', '#EDEDED', '#2E2E33') if dark else ('white', '#1B1F24', '#ccc')
+    return (f'<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:{bg};color:{fg};'
+            f'padding:8px 10px;border:1px solid {line};border-radius:8px;font:12px Roboto Flex,sans-serif">'
             f'{items}</div>')
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
-              radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None,
-              stops=None):
+              radius_m=None, focus=None, all_drains=None, basemap="Dark", cells=None, hoods=None,
+              stops=None, height="540px"):
     """stops: optional DataFrame with lat, lon, stop (walking order) drawn as numbered pins + a path from `you`."""
     # Canvas only when drawing 24k gray dots; SVG otherwise (more reliable inside Streamlit).
     m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None,
                    prefer_canvas=all_drains is not None and len(all_drains) > 0, max_zoom=19,
-                   width="100%", height="540px")
+                   width="100%", height=height)
     m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
-    b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
-    folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
-                     max_native_zoom=b["max_native_zoom"]).add_to(m)
+    add_basemap(m, basemap)
     if basemap == "Terrain shading (USGS)":  # add street labels on top of the shading
         folium.TileLayer(tiles=BASEMAPS["Streets"]["tiles"], attr=BASEMAPS["Streets"]["attr"],
                          name="Streets", opacity=0.35, max_zoom=19, max_native_zoom=19).add_to(m)
@@ -193,12 +209,15 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
     if show_heat and len(drains):
         HeatMap(drains[["lat", "lon", "risk"]].values.tolist(), radius=25, blur=20, name="Risk").add_to(m)
 
-    for _, r in drains.iterrows():
+    # Size and shape carry meaning too, not just color: bigger = more urgent, hollow ring = checked.
+    order = drains.sort_values("rank", ascending=False) if "rank" in drains else drains  # Urgent drawn on top
+    for _, r in order.iterrows():
         checked = r.get("status", "Not checked") in DONE_STATUSES
         color = CHECKED_COLOR if checked else TIER_COLORS.get(r["tier"], OTHER_DRAIN_COLOR)
         folium.CircleMarker(
             (r["lat"], r["lon"]), radius={"Urgent": 9, "High": 7}.get(r["tier"], 5),
-            color="white", weight=1, fill=True, fill_color=color, fill_opacity=0.95,
+            color=CHECKED_COLOR if checked else "white", weight=3 if checked else 1, fill=True,
+            fill_color="#0E0E10" if checked else color, fill_opacity=0.35 if checked else 0.95,
             tooltip=folium.Tooltip(
                 f'<div style="opacity:.7;font-size:12px">{r["neighborhood"]} · {r["asset_id"]}</div>'
                 f'<div style="font-size:14px">{_swatch(color)}<b>#{int(r["rank"])} {r["tier"]}</b>'
@@ -213,7 +232,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
     for name, la, lo in labels:
         folium.Marker((la, lo), icon=folium.DivIcon(
             icon_size=(160, 20), icon_anchor=(80, 10), class_name="nhood-label",
-            html=(f'<div style="pointer-events:none;text-align:center;font:700 11px Poppins,sans-serif;'
+            html=(f'<div style="pointer-events:none;text-align:center;font:700 11px Roboto Flex,sans-serif;'
                   f'letter-spacing:.06em;color:#1B1F24;text-transform:uppercase;'
                   f'text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 3px #fff">{name}</div>'))).add_to(m)
 
@@ -232,14 +251,14 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
                 icon_size=(26, 26), icon_anchor=(13, 13),
                 html=(f'<div style="width:26px;height:26px;border-radius:50%;background:#1F3A5F;color:#fff;'
                       f'border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);text-align:center;'
-                      f'font:700 13px/22px Poppins,sans-serif">{int(r.stop)}</div>'))).add_to(m)
+                      f'font:700 13px/22px Roboto Flex,sans-serif">{int(r.stop)}</div>'))).add_to(m)
 
     if you:
         folium.Marker(you, tooltip="You", icon=folium.Icon(color="blue", icon="user")).add_to(m)
         if radius_m:
             folium.Circle(you, radius=radius_m, color="#1F3A5F", weight=1, fill=False).add_to(m)
 
-    m.get_root().html.add_child(folium.Element(legend_html()))
+    m.get_root().html.add_child(folium.Element(legend_html(dark=basemap == "Dark")))
     # Only show neighborhood names when zoomed in enough that they don't pile up.
     # (Attached to the map itself so streamlit-folium includes it.)
     ms = _MapScript()
