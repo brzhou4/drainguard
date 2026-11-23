@@ -68,6 +68,9 @@ def _swatch(c):
 
 # Free basemaps (no API key). USGS = official US Geological Survey National Map tiles.
 BASEMAPS = {
+    # Muted dark canvas so the drains stay the strongest thing on the map (Esri, free with attribution).
+    "Dark": dict(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+                 attr="Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors", max_native_zoom=16),
     "Streets": dict(tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                     attr="&copy; OpenStreetMap contributors", max_native_zoom=19),
     "Topographic (USGS)": dict(tiles="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
@@ -82,33 +85,37 @@ BASEMAPS = {
 }
 
 
-def legend_html():
+def legend_html(dark=False):
     items = "".join(
         f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;'
         f'background:{c};margin-right:6px"></span>{t.upper()}</div>'
         for t, c in TIER_COLORS.items()
     )
     items += (f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;'
-              f'background:{CHECKED_COLOR};margin-right:6px"></span>CHECKED</div>'
+              f'border:3px solid {CHECKED_COLOR};box-sizing:border-box;margin-right:6px"></span>CHECKED (RING)</div>'
               f'<div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;'
               f'background:{OTHER_DRAIN_COLOR};margin:0 9px 2px 3px"></span>OTHER DRAINS</div>')
-    return ('<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:white;'
-            'padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:12px Roboto Flex,sans-serif">'
+    bg, fg, line = ('#161618', '#EDEDED', '#333336') if dark else ('white', '#1B1F24', '#ccc')
+    return (f'<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:{bg};color:{fg};'
+            f'padding:8px 10px;border:1px solid {line};border-radius:8px;font:12px Roboto Flex,sans-serif">'
             f'{items}</div>')
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
               radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None,
-              stops=None):
+              stops=None, height="540px"):
     """stops: optional DataFrame with lat, lon, stop (walking order) drawn as numbered pins + a path from `you`."""
     # Canvas only when drawing 24k gray dots; SVG otherwise (more reliable inside Streamlit).
     m = folium.Map(location=center or SF_CENTER, zoom_start=zoom, tiles=None,
                    prefer_canvas=all_drains is not None and len(all_drains) > 0, max_zoom=19,
-                   width="100%", height="540px")
+                   width="100%", height=height)
     m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
     b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
     folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
                      max_native_zoom=b["max_native_zoom"]).add_to(m)
+    if basemap == "Dark":  # street and place names on top of the dark canvas
+        folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+                         attr="Esri", name="Labels", max_zoom=19, max_native_zoom=16).add_to(m)
     if basemap == "Terrain shading (USGS)":  # add street labels on top of the shading
         folium.TileLayer(tiles=BASEMAPS["Streets"]["tiles"], attr=BASEMAPS["Streets"]["attr"],
                          name="Streets", opacity=0.35, max_zoom=19, max_native_zoom=19).add_to(m)
@@ -193,12 +200,15 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
     if show_heat and len(drains):
         HeatMap(drains[["lat", "lon", "risk"]].values.tolist(), radius=25, blur=20, name="Risk").add_to(m)
 
-    for _, r in drains.iterrows():
+    # Size and shape carry meaning too, not just color: bigger = more urgent, hollow ring = checked.
+    order = drains.sort_values("rank", ascending=False) if "rank" in drains else drains  # Urgent drawn on top
+    for _, r in order.iterrows():
         checked = r.get("status", "Not checked") in DONE_STATUSES
         color = CHECKED_COLOR if checked else TIER_COLORS.get(r["tier"], OTHER_DRAIN_COLOR)
         folium.CircleMarker(
             (r["lat"], r["lon"]), radius={"Urgent": 9, "High": 7}.get(r["tier"], 5),
-            color="white", weight=1, fill=True, fill_color=color, fill_opacity=0.95,
+            color=CHECKED_COLOR if checked else "white", weight=3 if checked else 1, fill=True,
+            fill_color="#0E0E10" if checked else color, fill_opacity=0.35 if checked else 0.95,
             tooltip=folium.Tooltip(
                 f'<div style="opacity:.7;font-size:12px">{r["neighborhood"]} · {r["asset_id"]}</div>'
                 f'<div style="font-size:14px">{_swatch(color)}<b>#{int(r["rank"])} {r["tier"]}</b>'
@@ -239,7 +249,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
         if radius_m:
             folium.Circle(you, radius=radius_m, color="#1F3A5F", weight=1, fill=False).add_to(m)
 
-    m.get_root().html.add_child(folium.Element(legend_html()))
+    m.get_root().html.add_child(folium.Element(legend_html(dark=basemap == "Dark")))
     # Only show neighborhood names when zoomed in enough that they don't pile up.
     # (Attached to the map itself so streamlit-folium includes it.)
     ms = _MapScript()

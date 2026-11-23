@@ -30,8 +30,5 @@ pages = [
     st.Page("views/flood_calculator.py", title="Flood Calculator", icon=":material/flood:"),
 ]
 
-st.sidebar.markdown("### DrainGuard")
-st.sidebar.caption("Ranks storm drains that are likely to need checking before a storm. "
-                   "Built at Acalanes Data Fest 2026 with public SF data.")
-
-st.navigation(pages).run()
+# Top navigation (like electionmapsf.com) so the map gets the full width.
+st.navigation(pages, position="top").run()
