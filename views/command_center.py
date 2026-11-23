@@ -18,11 +18,13 @@ APP_URL = setting("APP_URL", "")
 
 drains = drains_with_status()
 
-# Map-first layout (inspired by electionmapsf.com): drain list on the left, the map in the middle with the
-# storm alert on top of it, and the city-wide numbers on the right.
+# Map-first layout (inspired by electionmapsf.com): city-wide numbers on the left, the map in the middle with
+# the storm alert on top of it, and the drain list on the right.
 st.markdown("""<style>
 .block-container{padding-top:3.2rem;max-width:100%}
-.dg-panel-title{font-family:'Roboto Slab',serif;font-weight:600;font-size:22px;margin:0 0 2px}
+[data-testid] [data-testid="stMarkdownContainer"] .dg-panel-title,
+[data-testid] [data-testid="stMarkdownContainer"] .dg-alert-head{font-family:'Roboto Slab',serif!important}
+.dg-panel-title{font-weight:600;font-size:22px;margin:0 0 2px}
 .dg-big{font-size:40px!important;font-weight:600;line-height:1.1!important;margin:2px 0 8px!important}
 .dg-label{font-size:14px!important;font-weight:600;margin:14px 0 0!important;color:#EDEDED}
 .dg-muted{font-size:13px!important;color:#A1A1AA;margin:2px 0!important;line-height:1.5}
@@ -32,21 +34,20 @@ st.markdown("""<style>
 
 # ---------- Storm alert (sits on top of the map) ----------
 storm = current_storm()  # NWS forecast for the banner (STORM_OVERRIDE can force it for demos)
-ACCENT, LABEL = {  # accent color, label. Weather-warning colors: no purple.
-    "storm": ("#F5A524", "STORM ALERT"),
+LINE, LABEL = {  # outline + label color on a dark card (each label color is 4.5:1 or better on #1A1A1D)
+    "storm": ("#A78BFA", "STORM ALERT"),
     "watch": ("#FB923C", "RAIN WATCH"),
-    "clear": ("#22C55E", "ALL CLEAR"),
+    "clear": ("#4ADE80", "ALL CLEAR"),
     "unknown": ("#A1A1AA", "FORECAST"),
 }[storm["level"]]
 unchecked = int(((drains["tier"] == "Urgent") & ~drains["status"].isin(DONE_STATUSES)).sum())
 action = (f"{unchecked} Urgent drains still need checking before the rain." if storm["level"] in ("storm", "watch")
           else f"{unchecked} Urgent drains not yet checked.")
-alert_html = f"""<div role="status" style="background:#1A1A1D;border:1px solid #2E2E33;border-left:5px solid {ACCENT};
-  border-radius:12px;padding:12px 16px;margin:0 0 10px">
+alert_html = f"""<div role="status" style="background:#1A1A1D;color:#FFFFFF;border:2px solid {LINE};border-radius:12px;padding:12px 16px;margin:0 0 10px">
   <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px">
-    <span style="color:{ACCENT};font-size:12px;font-weight:700;letter-spacing:.12em">{LABEL} · SAN FRANCISCO</span>
-    <span style="font-family:'Roboto Slab',serif;font-size:21px;font-weight:600;color:#FFFFFF">{storm['headline']}</span>
-    <span style="font-size:15px;font-weight:600;color:{ACCENT}">{action}</span>
+    <span style="font-size:12px;font-weight:700;letter-spacing:.12em;color:{LINE}">{LABEL} · SAN FRANCISCO</span>
+    <span class="dg-alert-head" style="font-size:21px;font-weight:600">{storm['headline']}</span>
+    <span style="font-size:15px;font-weight:600">{action}</span>
   </div>
   <details style="margin-top:4px;font-size:13px;color:#A1A1AA"><summary style="cursor:pointer">Forecast details</summary>
   {storm['detail']}<br>Source: National Weather Service forecast, updated every 30 min.</details>
@@ -64,10 +65,10 @@ if RESULTS_JSON.exists():
         pass
 source = data_source()
 
-left, center_col, right = st.columns([1.3, 2.75, 1.0], gap="medium")
+stats_col, center_col, list_col = st.columns([1.0, 2.75, 1.3], gap="medium")
 
-# ---------- Left: filters + urgency list (like the race list) ----------
-with left:
+# ---------- Right: filters + urgency list (like the race list) ----------
+with list_col:
     st.markdown('<p class="dg-panel-title">Drains to check</p>', unsafe_allow_html=True)
     st.markdown('<p class="dg-muted">Ranked by how likely each is to need checking</p>', unsafe_allow_html=True)
     tier_pick = st.pills("Tier", TIERS, selection_mode="multi", default=["Urgent", "High"], key="f_tier")
@@ -153,8 +154,8 @@ with center_col:
         st.caption(f"Zoomed to drain #{int(selected['rank'])} ({selected['neighborhood']}). "
                    "Deselect the row to see the whole city.")
 
-# ---------- Right: city-wide numbers (like the turnout panel) ----------
-with right:
+# ---------- Left: city-wide numbers (like the turnout panel) ----------
+with stats_col:
     st.markdown('<p class="dg-panel-title">Command Center</p>', unsafe_allow_html=True)
     pct = checked_urgent / len(urgent) if len(urgent) else 0
     st.markdown(f"""<p class="dg-label">Urgent drains checked</p>

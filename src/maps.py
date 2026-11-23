@@ -19,7 +19,13 @@ TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;borde
                  ".leaflet-tooltip:before,.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,"
                  ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}"
                  ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}"
-                 ".hide-labels .nhood-label{display:none!important;}</style>")
+                 ".hide-labels .nhood-label{display:none!important;}"
+                 # Night mode (like Google Maps' dark mode): invert the street map and turn hues back, so water,
+                 # parks and roads keep their colors but dark, and the drains stay the brightest thing on it.
+                 ".dg-night{filter:invert(1) hue-rotate(180deg) brightness(.9) contrast(.88) saturate(.55);}"
+                 ".leaflet-container{font-family:'Roboto Flex',sans-serif!important;background:#0E0E10!important}"
+                 ".leaflet-control-attribution{background:rgba(14,14,16,.75)!important;color:#A1A1AA!important}"
+                 ".leaflet-control-attribution a{color:#C4B5FD!important}</style>")
 TIP_CSS = ("background-color:#FFFFFF;color:#1B1F24;font-family:'Roboto Flex',sans-serif;font-size:13px;"
            "border:1px solid #E3E6EB;border-radius:10px;padding:9px 12px;box-shadow:0 6px 20px rgba(16,24,40,.14);")
 
@@ -68,9 +74,9 @@ def _swatch(c):
 
 # Free basemaps (no API key). USGS = official US Geological Survey National Map tiles.
 BASEMAPS = {
-    # Muted dark canvas so the drains stay the strongest thing on the map (Esri, free with attribution).
-    "Dark": dict(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-                 attr="Tiles &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors", max_native_zoom=16),
+    # Night mode: OpenStreetMap streets restyled dark with a CSS filter (see .dg-night). Free, no key.
+    "Dark": dict(class_name="dg-night", tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                 attr="&copy; OpenStreetMap contributors", max_native_zoom=19),
     "Streets": dict(tiles="https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                     attr="&copy; OpenStreetMap contributors", max_native_zoom=19),
     "Topographic (USGS)": dict(tiles="https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
@@ -85,6 +91,14 @@ BASEMAPS = {
 }
 
 
+def add_basemap(m, basemap):
+    """Tile layer for a BASEMAPS entry ('Dark' = night-mode streets)."""
+    b = BASEMAPS.get(basemap, BASEMAPS["Dark"])
+    extra = {"class_name": b["class_name"]} if "class_name" in b else {}
+    folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
+                     max_native_zoom=b["max_native_zoom"], **extra).add_to(m)
+
+
 def legend_html(dark=False):
     items = "".join(
         f'<div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;'
@@ -95,14 +109,14 @@ def legend_html(dark=False):
               f'border:3px solid {CHECKED_COLOR};box-sizing:border-box;margin-right:6px"></span>CHECKED (RING)</div>'
               f'<div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;'
               f'background:{OTHER_DRAIN_COLOR};margin:0 9px 2px 3px"></span>OTHER DRAINS</div>')
-    bg, fg, line = ('#161618', '#EDEDED', '#333336') if dark else ('white', '#1B1F24', '#ccc')
+    bg, fg, line = ('#1A1A1D', '#EDEDED', '#2E2E33') if dark else ('white', '#1B1F24', '#ccc')
     return (f'<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:{bg};color:{fg};'
             f'padding:8px 10px;border:1px solid {line};border-radius:8px;font:12px Roboto Flex,sans-serif">'
             f'{items}</div>')
 
 
 def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=None, zoom=12, you=None,
-              radius_m=None, focus=None, all_drains=None, basemap="Streets", cells=None, hoods=None,
+              radius_m=None, focus=None, all_drains=None, basemap="Dark", cells=None, hoods=None,
               stops=None, height="540px"):
     """stops: optional DataFrame with lat, lon, stop (walking order) drawn as numbered pins + a path from `you`."""
     # Canvas only when drawing 24k gray dots; SVG otherwise (more reliable inside Streamlit).
@@ -110,12 +124,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
                    prefer_canvas=all_drains is not None and len(all_drains) > 0, max_zoom=19,
                    width="100%", height=height)
     m.get_root().header.add_child(folium.Element(FONT_LINK + TOOLTIP_RESET))
-    b = BASEMAPS.get(basemap, BASEMAPS["Streets"])
-    folium.TileLayer(tiles=b["tiles"], attr=b["attr"], name=basemap, max_zoom=19,
-                     max_native_zoom=b["max_native_zoom"]).add_to(m)
-    if basemap == "Dark":  # street and place names on top of the dark canvas
-        folium.TileLayer(tiles="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
-                         attr="Esri", name="Labels", max_zoom=19, max_native_zoom=16).add_to(m)
+    add_basemap(m, basemap)
     if basemap == "Terrain shading (USGS)":  # add street labels on top of the shading
         folium.TileLayer(tiles=BASEMAPS["Streets"]["tiles"], attr=BASEMAPS["Streets"]["attr"],
                          name="Streets", opacity=0.35, max_zoom=19, max_native_zoom=19).add_to(m)

@@ -16,7 +16,7 @@ RESULTS_JSON = PROCESSED / "results.json"
 
 TZ = ZoneInfo("America/Los_Angeles")
 TIERS = ["Urgent", "High", "Watch"]
-TIER_COLORS = {"Urgent": "#EF4444", "High": "#F59E0B", "Watch": "#94A3B8"}  # red, amber, slate: brighter = more urgent on the dark map
+TIER_COLORS = {"Urgent": "#EF4444", "High": "#F59E0B", "Watch": "#94A3B8"}  # red, amber, slate: brighter = more urgent on the night map
 CHECKED_COLOR = "#2E9E5B"   # green = checked
 OTHER_DRAIN_COLOR = "#9AA0A6"  # gray = every other mapped drain
 EN_ROUTE = "Volunteer en route"
