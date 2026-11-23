@@ -11,7 +11,7 @@ from src.data import CHECKED_COLOR, DONE_STATUSES, OTHER_DRAIN_COLOR, PROCESSED,
 SF_CENTER = (37.758, -122.44)
 
 FONT_LINK = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
-             '<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" '
+             '<link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700&family=Roboto+Slab:wght@500;600;700&display=swap" '
              'rel="stylesheet">')
 # Remove Leaflet's default white tooltip box + arrow so only our dark card shows.
 TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;border:none!important;"
@@ -20,7 +20,7 @@ TOOLTIP_RESET = ("<style>.leaflet-tooltip{background:transparent!important;borde
                  ".leaflet-tooltip-left:before,.leaflet-tooltip-right:before{display:none!important;}"
                  ".nhood-label{pointer-events:none!important;background:none!important;border:none!important;}"
                  ".hide-labels .nhood-label{display:none!important;}</style>")
-TIP_CSS = ("background-color:#FFFFFF;color:#1B1F24;font-family:Poppins,sans-serif;font-size:13px;"
+TIP_CSS = ("background-color:#FFFFFF;color:#1B1F24;font-family:'Roboto Flex',sans-serif;font-size:13px;"
            "border:1px solid #E3E6EB;border-radius:10px;padding:9px 12px;box-shadow:0 6px 20px rgba(16,24,40,.14);")
 
 # Flood risk % (share of past storm days with flooding in a ~250 m square). Water blues, darker = higher.
@@ -40,7 +40,7 @@ class _MapScript(MacroElement):
               + ".hide-labels .nhood-label{display:none!important;}";
             document.head.appendChild(st);
             var f = document.createElement('link'); f.rel = 'stylesheet';
-            f.href = 'https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap';
+            f.href = 'https://fonts.googleapis.com/css2?family=Roboto+Flex:wght@400;500;600;700&family=Roboto+Slab:wght@500;600;700&display=swap';
             document.head.appendChild(f);
           }
           function lbl(){ map.getContainer().classList.toggle('hide-labels', map.getZoom() < 14); }
@@ -93,7 +93,7 @@ def legend_html():
               f'<div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;'
               f'background:{OTHER_DRAIN_COLOR};margin:0 9px 2px 3px"></span>OTHER DRAINS</div>')
     return ('<div style="position:fixed;bottom:24px;left:24px;z-index:9999;background:white;'
-            'padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:12px Poppins,sans-serif">'
+            'padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:12px Roboto Flex,sans-serif">'
             f'{items}</div>')
 
 
@@ -213,7 +213,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
     for name, la, lo in labels:
         folium.Marker((la, lo), icon=folium.DivIcon(
             icon_size=(160, 20), icon_anchor=(80, 10), class_name="nhood-label",
-            html=(f'<div style="pointer-events:none;text-align:center;font:700 11px Poppins,sans-serif;'
+            html=(f'<div style="pointer-events:none;text-align:center;font:700 11px Roboto Flex,sans-serif;'
                   f'letter-spacing:.06em;color:#1B1F24;text-transform:uppercase;'
                   f'text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff,0 0 3px #fff">{name}</div>'))).add_to(m)
 
@@ -232,7 +232,7 @@ def drain_map(drains, show_heat=True, show_zone=False, show_nov18=False, center=
                 icon_size=(26, 26), icon_anchor=(13, 13),
                 html=(f'<div style="width:26px;height:26px;border-radius:50%;background:#1F3A5F;color:#fff;'
                       f'border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);text-align:center;'
-                      f'font:700 13px/22px Poppins,sans-serif">{int(r.stop)}</div>'))).add_to(m)
+                      f'font:700 13px/22px Roboto Flex,sans-serif">{int(r.stop)}</div>'))).add_to(m)
 
     if you:
         folium.Marker(you, tooltip="You", icon=folium.Icon(color="blue", icon="user")).add_to(m)

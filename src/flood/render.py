@@ -65,7 +65,7 @@ def _legend_html(show_depth=True, show_heat=False):
     rows += (f'<div style="margin-top:3px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
              f'background:{OVERWHELMED_COLOR};margin:0 8px 1px 2px"></span>Drain overwhelmed</div>')
     return ('<div style="position:absolute;bottom:24px;left:24px;z-index:9999;background:white;'
-            'padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:12px Poppins,sans-serif">'
+            'padding:8px 10px;border:1px solid #ccc;border-radius:8px;font:12px Roboto Flex,sans-serif">'
             f'<div style="font-weight:600;margin-bottom:3px">Water depth</div>{rows}</div>')
 
 
